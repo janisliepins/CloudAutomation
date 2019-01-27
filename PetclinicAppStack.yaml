@@ -6,12 +6,24 @@ Parameters:
   VpcSubnetB:
     Type: "AWS::EC2::Subnet::Id" 
 Resources:    
+  DB:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllocatedStorage: 5
+      DBInstanceClass: db.t2.micro
+      DBName: petclinic
+      Engine: MySQL
+      StorageType: gp2
+      MasterUsername: root
+      MasterUserPassword: petclinic
+      PubliclyAccessible: false
+      DBSecurityGroups: [!Ref DBSecurityGroup]
   S3BucketsInstanceProfile: 
-      Type: "AWS::IAM::InstanceProfile"
-      Properties: 
-        Path: "/"
-        Roles: 
-          - "MyS3Role"              
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      Path: "/"
+      Roles: 
+        - "MyS3Role"              
   AutoScalingGroup:
     CreationPolicy:
       ResourceSignal:
@@ -37,7 +49,7 @@ Resources:
   LaunchConfiguration:
     Type: "AWS::AutoScaling::LaunchConfiguration"     
     Properties:
-      InstanceType: t2.small
+      InstanceType: t2.micro
       IamInstanceProfile: 
         Ref: "S3BucketsInstanceProfile"
       ImageId: ami-035be7bafff33b6b6
@@ -181,6 +193,7 @@ Resources:
   EC2SecurityGroup: 
     Type: AWS::EC2::SecurityGroup
     Properties:
+      VpcId: !Ref VpcId
       GroupDescription: EC2 Instance Security Group
   EC2InboundRule: # EC2 can only accept traffic from ALB
     Type: AWS::EC2::SecurityGroupIngress
@@ -195,11 +208,33 @@ Resources:
       GroupId:
         !GetAtt
         - EC2SecurityGroup
-        - GroupId                                   
+        - GroupId  
+  DBSecurityGroup:
+    Type: AWS::RDS::DBSecurityGroup
+    Properties:
+      DBSecurityGroupIngress:
+        EC2SecurityGroupName: 
+          Ref: DBEC2SecurityGroup
+      GroupDescription: Frontend Access 
+  DBEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+      - 
+        IpProtocol: tcp
+        FromPort: '3306'
+        ToPort: '3306'
+        SourceSecurityGroupId: 
+          Ref: EC2SecurityGroup               
 Outputs:
   Endpoint:
     Description: Application Address
     Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]]
+Outputs:
+  Endpoint:
+    Description: DB Endpoint
+    Value: !GetAtt DB.Endpoint.Address
 
 
 
