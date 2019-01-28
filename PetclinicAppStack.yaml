@@ -17,7 +17,8 @@ Resources:
       MasterUsername: root
       MasterUserPassword: petclinic
       PubliclyAccessible: false
-      DBSecurityGroups: [!Ref DBSecurityGroup]
+      VPCSecurityGroups: 
+      - !GetAtt DBEC2SecurityGroup.GroupId
   S3BucketsInstanceProfile: 
     Type: "AWS::IAM::InstanceProfile"
     Properties: 
@@ -49,7 +50,7 @@ Resources:
   LaunchConfiguration:
     Type: "AWS::AutoScaling::LaunchConfiguration"     
     Properties:
-      InstanceType: t2.micro
+      InstanceType: t2.small
       IamInstanceProfile: 
         Ref: "S3BucketsInstanceProfile"
       ImageId: ami-035be7bafff33b6b6
@@ -208,14 +209,7 @@ Resources:
       GroupId:
         !GetAtt
         - EC2SecurityGroup
-        - GroupId  
-  DBSecurityGroup:
-    Type: AWS::RDS::DBSecurityGroup
-    Properties:
-      DBSecurityGroupIngress:
-        EC2SecurityGroupName: 
-          Ref: DBEC2SecurityGroup
-      GroupDescription: Frontend Access 
+        - GroupId    
   DBEC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -228,13 +222,13 @@ Resources:
         SourceSecurityGroupId: 
           Ref: EC2SecurityGroup               
 Outputs:
-  Endpoint:
+  DNSEndpoint:
     Description: Application Address
     Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]]
-Outputs:
-  Endpoint:
+  DBEndpoint:
     Description: DB Endpoint
     Value: !GetAtt DB.Endpoint.Address
+
 
 
 
