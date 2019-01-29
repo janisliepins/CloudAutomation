@@ -49,13 +49,12 @@ Resources:  # Resursu definesanas sadala
       VpcId: !Ref VpcId # Definets virtualais tikls, kura tiks izvietots resurss    
       Port: 80 # Ports uz kuru merka grupas servera instances sanems datuplusmu
       Protocol: "HTTP" # Protokols, kurs tiks izmantots datuplusmas marsutesanai uz merka grupas servera instancem
-  S3BucketsInstanceProfile: 
-    Type: "AWS::IAM::InstanceProfile"
+  S3BucketsInstanceProfile: # Deklarets, ka tiks definets noteikts pielaizu profils (kurs jau ir ieprieks manuali definets "IAM" resursa sadala), ar kuru tiks asocietas servera instances, lai tas iegutu pieeju "S3" glabatuves resursiem
+    Type: "AWS::IAM::InstanceProfile" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
     Properties: 
       Path: "/"
-      Roles: 
-        - "MyS3Role"              
-  AutoScalingGroup:
+      Roles: ["MyS3Role"] # Manuali izveidota piekluves vadibas loma, kas ietver piekluvju noteikumus "S3" glabatuves objektiem            
+  AutoScalingGroup: # Deklareta automatiska merogosanas grupa
     CreationPolicy:
       ResourceSignal:
         Count: 2
@@ -63,37 +62,33 @@ Resources:  # Resursu definesanas sadala
     UpdatePolicy:
       AutoScalingReplacingUpdate:
         WillReplace: true
-    Type: "AWS::AutoScaling::AutoScalingGroup"
-    Properties:
-      Cooldown: "300"
-      DesiredCapacity: 2
-      HealthCheckGracePeriod: "300"
-      HealthCheckType: EC2
-      LaunchConfigurationName: !Ref LaunchConfiguration
-      TargetGroupARNs: 
-        - !Ref DefaultTargetGroup
-      MaxSize: 3
-      MinSize: 2      
-      VPCZoneIdentifier:
+    Type: "AWS::AutoScaling::AutoScalingGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
+    Properties: # Definetas automatiskas merogosanas grupas ipasibas
+      Cooldown: 300
+      DesiredCapacity: "2" # Definets, ka sai grupai jasastav no 2 serveru instancem
+      HealthCheckType: "EC2" # AWS resursa tipa pret kuru tiks veikta statusa parbaude - saja gadijuma servera instances
+      LaunchConfigurationName: !Ref LaunchConfiguration # Atsauce uz palaisanas konfiguraciju, kura tiks izmantota, izveidojot servera instances un definejot to ipasibas
+      TargetGroupARNs: [!Ref DefaultTargetGroup] # Atsauce uz merka grupu
+      MaxSize: "3" # Definets maksimalais servera instancu skaits
+      MinSize: "2" # Definets minimalais servera instancu skaits    
+      VPCZoneIdentifier: # Defineti divi apakstikli, kuros tiks izvietota katra no serveru instancem. Vertibas tiek iegutas no izveles parametru sadalas 
         - !Ref VpcSubnetA
         - !Ref VpcSubnetB
-  LaunchConfiguration:
-    Type: "AWS::AutoScaling::LaunchConfiguration"     
-    Properties:
-      InstanceType: t2.small
-      IamInstanceProfile: 
-        Ref: "S3BucketsInstanceProfile"
-      ImageId: ami-035be7bafff33b6b6
-      KeyName: AWSAdminKeyPair
+  LaunchConfiguration: # Deklareta palaisanas konfiguracija "EC2" resursa servera instancem, kuru izmanto automatiskas merogosanas grupa servera instancu konfiguresanai
+    Type: "AWS::AutoScaling::LaunchConfiguration" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-launchconfig.html  
+    Properties: 
+      InstanceType: t2.small # Statiski definets velamais "EC2" resursa tips - apzime virtuala servera izmera un jaudas apmerus
+      IamInstanceProfile: !Ref "S3BucketsInstanceProfile" # Atsauce uz pielaizu profilu, kas tiks asociets ar instancem
+      ImageId: ami-035be7bafff33b6b6 # Statiski definets velamais "EC2" resursa - virtuala servera - imidza identifikacijas nummurs - saja gadijuma "Amazon Linux 2 AMI", no kura tiks veidotas servera instances
       SecurityGroups:
-        - !Ref EC2SecurityGroup      
-      UserData:
-        'Fn::Base64': 
-          !Sub |
+        - !Ref EC2SecurityGroup # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu    
+      UserData: # Ievaddatu definesana, noteiktu komandu izpildei, kad tiek palaista virtualais serveris
+        'Fn::Base64': # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-helper-scripts-reference.html
+          !Sub | # Pirma darbiba startejot jaunu servera instanci ir instalet "CloudFormation" paligskriptus, kas laus talak automatized servera konfiguresanu atbilstosi vajadzibam
             #!/bin/bash    
-            yum update -y aws-cfn-bootstrap             
-            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --configsets install_all --region ${AWS::Region}
-            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}  
+            yum update -y aws-cfn-bootstrap # Tiek instaleta "AWS" uztureta paligskriptu programmatura             
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --configsets install_all --region ${AWS::Region} # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-init.html
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-signal.html
     CreationPolicy:
       ResourceSignal:
         Count: 1
@@ -129,12 +124,12 @@ Resources:  # Resursu definesanas sadala
                 enabled: "true"
                 ensureRunning: "true"
                 files: ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]
-        install_wildfly:
+        install_wildfly: # Deklareta jaunu konfiguraciju izpildes grupa, kas nodrosinas aplikaciju servera instalaciju un konfiguracijas uz virtuala servera
           packages:
-            yum:
-              java-1.8.0-openjdk-devel: []
+            yum: # Deineta nepieciesamo pakesu instalacija 
+              java-1.8.0-openjdk-devel: [] 
               httpd: []        
-          users: 
+          users: # Jauna lietotaja izveide
             wildfly: {}                         
           sources:
             /opt/: "http://download.jboss.org/wildfly/14.0.1.Final/wildfly-14.0.1.Final.tar.gz" 
@@ -165,8 +160,8 @@ Resources:  # Resursu definesanas sadala
               httpd:                
                 enabled: true
                 ensureRunning: true    
-        install_codedeploy:
-          packages:
+        install_codedeploy: # Deklareta jaunu konfiguraciju izpildes grupa, kas nodrosinas virtualo serveru mijiedarbibu ar "CodeDeploy" resursu
+          packages: # Definets kadam programmaturu paketem jabut instaletam uz servera
             yum:
               ruby: []                         
           commands:   
