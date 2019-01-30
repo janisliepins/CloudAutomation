@@ -217,13 +217,12 @@ Resources:  # Resursu definesanas sadala
           Ref: EC2SecurityGroup               
 Outputs:
   DNSEndpoint:
-    Description: Application Address
+    Description: Application address
     Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]]
   DBEndpoint:
     Description: PetclinicDatabase endpoint
     Value: !GetAtt PetclinicDatabase.Endpoint.Address
-
-
+  
 
 
 
