@@ -66,7 +66,8 @@ Resources:  # Resursu definesanas sadala
     Properties: # Definetas automatiskas merogosanas grupas ipasibas
       Cooldown: 300
       DesiredCapacity: "2" # Definets, ka sai grupai jasastav no 2 serveru instancem
-      HealthCheckType: "EC2" # AWS resursa tipa pret kuru tiks veikta statusa parbaude - saja gadijuma servera instances
+      HealthCheckType: "ELB" # AWS resursa tips pret kuru tiks veikta statusa parbaude - saja gadijuma aplikaciju tikla slodzes lidzsvarotajs, kurs var noteikt statusu netikai instancei, bet ari pasai aplikacijai
+      HealthCheckGracePeriod: 300 # Definets ilgums sekundes, pec cik ilga laika, kad tiek izveidota jauna servera instance, automatiska merogosanas grupa sak statusa parbaudes
       LaunchConfigurationName: !Ref LaunchConfiguration # Atsauce uz palaisanas konfiguraciju, kura tiks izmantota, izveidojot servera instances un definejot to ipasibas
       TargetGroupARNs: [!Ref DefaultTargetGroup] # Atsauce uz merka grupu
       MaxSize: "3" # Definets maksimalais servera instancu skaits
@@ -89,13 +90,13 @@ Resources:  # Resursu definesanas sadala
             yum update -y aws-cfn-bootstrap # Tiek instaleta "AWS" uztureta paligskriptu programmatura             
             /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchConfiguration --configsets install_all --region ${AWS::Region} # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-init.html
             /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AutoScalingGroup --region ${AWS::Region}  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-signal.html
-    CreationPolicy:
-      ResourceSignal:
+    CreationPolicy: # Deklarets atributs, kurs nelauj "Cloudformation" resursam noteikt grupas izveides veiksmigu statusu, kamer nav sanemts definets signalu skaits noteikta intervala
+      ResourceSignal: # Definets resursa signals un ta ipasibas
         Count: 1
         Timeout: "PT5M"                   
-    Metadata:
-      AWS::CloudFormation::Init:
-        configSets:
+    Metadata: 
+      AWS::CloudFormation::Init: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+        configSets: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html#aws-resource-init-commands
           install_all: [install_cfn, install_wildfly, install_codedeploy]               
         install_cfn:
           files:
@@ -118,48 +119,49 @@ Resources:  # Resursu definesanas sadala
               mode: "000400"
               owner: root
               group: root            
-          services:
-            sysvinit:
+          services: # Definets velamais statuss sekojosiem servisiem
+            sysvinit: 
               cfn-hup:
                 enabled: "true"
                 ensureRunning: "true"
                 files: ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]
         install_wildfly: # Deklareta jaunu konfiguraciju izpildes grupa, kas nodrosinas aplikaciju servera instalaciju un konfiguracijas uz virtuala servera
-          packages:
-            yum: # Deineta nepieciesamo pakesu instalacija 
+          packages: # Definets velamais statuss - instaletas - sekojosam programmaturam 
+            yum: # Deineta nepieciesamo pakesu instalacija un to menedzmenta sistema, kas tiks izmantota instalacijai - "yum"
               java-1.8.0-openjdk-devel: [] 
               httpd: []        
           users: # Jauna lietotaja izveide
             wildfly: {}                         
-          sources:
+          sources: # Noradita velama mape, kura tiks noladeta aplikaciju servera instalacijas paka
             /opt/: "http://download.jboss.org/wildfly/14.0.1.Final/wildfly-14.0.1.Final.tar.gz" 
-          files:
-            /etc/default/wildfly:
+          files: # Ar "files" atributu deklarets, ka tiks veiktas darbibas ar noteiktu failu
+            /etc/default/wildfly: # Janodrosina, ka eksiste fails "wildfly" ar noteiktu saturu un tam jaatrodas "/etc/default/" mape, kuras saturu izmantos Linux operetajsistema palaizot servisus no "/etc/init.d/" mapes 
               content: !Sub |
-                JBOSS_HOME="/opt/wildfly-14.0.1.Final"                                           
-              mode: "000400"
-              owner: root
+                JBOSS_HOME="/opt/wildfly-14.0.1.Final" # Defineta "Wildfly" aplikaciju servera instalacijas vieta. Si vertiba tiek padota servera palaisanas procesam 
+                JBOSS_USER=wildfly                                           
+              mode: "000400" # Noteikts faila piekluves ierobezojums: "read by owner" - lasisanas rezima var pieklut tikai faila ipasnieks
+              owner: root # Noteikts faila ipasnieks un vina grupa
               group: root
-          commands:                        
-            give_permissions:
+          commands: # Definetas vairakas komandas, kas jaizpilda uz virtualo serveru instancem                      
+            give_permissions: 
               cwd: "/opt/"
-              command: "chown -R wildfly:wildfly wildfly-14.0.1.Final"            
+              command: "chown -R wildfly:wildfly wildfly-14.0.1.Final" # Tiek definets, ka aplikaciju servera instalacijas mape pieder "wildfly" lietotajam          
             copy_startup:
-              cwd: "/etc/init.d"
-              test: "test ! -e wildfly"
-              command: "cp /opt/wildfly-14.0.1.Final/docs/contrib/scripts/init.d/wildfly-init-redhat.sh wildfly"
+              cwd: "/etc/init.d" # Noteikts cels jeb vieta, no kurienes japalaiz sekojosas komandas
+              test: "test ! -e wildfly" # Ja sads fails jau eksiste, nakama komanda netiek izpildita
+              command: "cp /opt/wildfly-14.0.1.Final/docs/contrib/scripts/init.d/wildfly-init-redhat.sh wildfly" # Tiek kopets "Wildfly" programmaturas palaisanas skripts uz noteikto "/etc/init.d/ mapi"
             add_proxy:
-              cwd: "/etc/httpd/conf"              
+              cwd: "/etc/httpd/conf" # Tiek pievienotas paradresacija konfiguracijas "Httpd" servisam - saja gadijuma ienakosa datuplusa tiks paradreseta uz "Wildfly" servisu             
               command: "sed -i '1 s#^.*$#ProxyPass / http://localhost:8080/#;2 s#^.*$#ProxyPassReverse / http://localhost:8080/#' httpd.conf"
-          services:
+          services: # Definets velamais statuss sekojosiem servisiem
             sysvinit:
-              wildfly:
+              wildfly: # "Wildfly" servisam jabut startetam
                 enabled: "true"
                 ensureRunning: "true" 
-                files: ["/etc/default/wildfly"]
-              httpd:                
-                enabled: true
-                ensureRunning: true    
+                files: ["/etc/default/wildfly"] # Definets, ka ieprieks definetais serviss ir velreiz no jauna jastarte, ja si faila saturs tiek mainits
+              httpd: # "Apache Httpd" servisam jabut startetam                 
+                enabled: "true"
+                ensureRunning: "true"    
         install_codedeploy: # Deklareta jaunu konfiguraciju izpildes grupa, kas nodrosinas virtualo serveru mijiedarbibu ar "CodeDeploy" resursu
           packages: # Definets kadam programmaturu paketem jabut instaletam uz servera
             yum:
@@ -175,25 +177,25 @@ Resources:  # Resursu definesanas sadala
             install_agent:
               cwd: "/home/ec2-user"
               command: "./install auto"  
-  ALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  ALBSecurityGroup: # Deklareta automatiskas merogosanas grupas drosibas grupa 
+    Type: AWS::EC2::SecurityGroup # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
     Properties:
-      GroupDescription: ALB Security Group
+      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', ALB Security Group]]
       VpcId: !Ref VpcId
       SecurityGroupIngress:      
         - IpProtocol: tcp
           ToPort: "80"
           FromPort: "80"    
           CidrIp: 0.0.0.0/0    
-  EC2SecurityGroup: 
-    Type: AWS::EC2::SecurityGroup
+  EC2SecurityGroup: # Deklareta virtualo serveru drosibas grupa
+    Type: "AWS::EC2::SecurityGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
     Properties:
+      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', EC2 Instance Security Group]]
       VpcId: !Ref VpcId
-      GroupDescription: EC2 Instance Security Group
   EC2InboundRule: # EC2 can only accept traffic from ALB
-    Type: AWS::EC2::SecurityGroupIngress
+    Type: "AWS::EC2::SecurityGroupIngress" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html
     Properties:
-      IpProtocol: tcp
+      IpProtocol: "tcp"
       FromPort: 80
       ToPort: 80
       SourceSecurityGroupId:
@@ -204,15 +206,15 @@ Resources:  # Resursu definesanas sadala
         !GetAtt
         - EC2SecurityGroup
         - GroupId    
-  DBEC2SecurityGroup:
-    Type: AWS::EC2::SecurityGroup
+  DBEC2SecurityGroup: # Deklareta datubazes drosibas grupa
+    Type: "AWS::EC2::SecurityGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
     Properties:
-      GroupDescription: Open database for access
+      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', DB Security Group]]
       SecurityGroupIngress:
       - 
-        IpProtocol: tcp
-        FromPort: '3306'
-        ToPort: '3306'
+        IpProtocol: "tcp"
+        FromPort: 3306
+        ToPort: 3306
         SourceSecurityGroupId: 
           Ref: EC2SecurityGroup               
 Outputs:
@@ -224,7 +226,7 @@ Outputs:
     Value: !GetAtt PetclinicDatabase.Endpoint.Address
   
 
-
+# https://stackoverflow.com/questions/48529074/how-is-target-groups-different-from-auto-scaling-groups-in-aws
 
 
   

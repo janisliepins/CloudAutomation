@@ -4,7 +4,68 @@ Parameters:
     Type: String
     Default: Petclinic
 # https://github.com/aws-samples/aws-codebuild-samples/tree/master/cloudformation
+# https://github.com/stelligent/aws-codedeploy-sample-tomcat/blob/master/pipeline.yml
 Resources:
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - codepipeline.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: codepipeline-service
+        PolicyDocument:
+          Statement:
+          - Action:
+            - codecommit:GetBranch
+            - codecommit:GetCommit
+            - codecommit:UploadArchive
+            - codecommit:GetUploadArchiveStatus
+            - codecommit:CancelUploadArchive
+            - codebuild:*
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - s3:GetObject
+            - s3:GetObjectVersion
+            - s3:GetBucketVersioning
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - s3:PutObject
+            Resource:
+            - arn:aws:s3:::codepipeline*
+            Effect: Allow
+          - Action:
+            - codedeploy:CreateDeployment
+            - codedeploy:GetApplicationRevision
+            - codedeploy:GetDeployment
+            - codedeploy:GetDeploymentConfig
+            - codedeploy:RegisterApplicationRevision
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - ec2:*
+            - elasticloadbalancing:*
+            - autoscaling:*
+            - s3:*
+            - cloudformation:*
+            - rds:*
+            - iam:PassRole
+            Resource: "*"
+            Effect: Allow
+          - Action:
+            - lambda:InvokeFunction
+            - lambda:ListFunctions
+            Resource: "*"
+            Effect: Allow
+          Version: '2012-10-17'  
   CodeBuildPolicy:
     Type: AWS::IAM::Policy
     Description: Setting IAM policy for service role for CodeBuild
@@ -125,7 +186,7 @@ Resources:
                   - ec2:*
                   - autoscaling:*
                 Resource: "*"
-
+ 
   DeploymentGroup:
     Type: "AWS::CodeDeploy::DeploymentGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-deploymentgroup.html
     Properties:
@@ -136,8 +197,65 @@ Resources:
       ApplicationName: !Ref CodeDeployApplication        
       ServiceRoleArn: arn:aws:iam::035868780374:role/CodeDeployServiceRole    
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
-      AutoScalingGroups: ["xxx-AutoScalingGroup-1BOB5F3VMUM5O"]
-       
+      AutoScalingGroups: ["PetclinicAppStack-AutoScalingGroup-16I8FFTHJT8XN"]
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Location: !Ref "ArtifactsBucket"
+        Type: S3    
+      RoleArn: !GetAtt [CodePipelineRole, Arn]
+      Stages:
+        - Name: Source
+          Actions:
+          - InputArtifacts: []
+            Name: SourceAction
+            ActionTypeId:
+              Category: Source
+              Owner: AWS
+              Provider: CodeCommit
+              Version: '1'
+            OutputArtifacts:
+            - Name: MyApp              
+            Configuration:
+              RepositoryName: Petclinic
+              BranchName: "master"
+              PollForSourceChanges: true              
+        - Name: Build
+          Actions:
+          - InputArtifacts:
+            - Name: MyApp
+            Name: Build
+            ActionTypeId:
+              Category: Build 
+              Owner: AWS
+              Provider: CodeBuild
+              Version: '1'
+            OutputArtifacts: 
+            - Name: MyAppBuild           
+            Configuration:
+              ProjectName: !Ref CodeBuildProject  
+            RunOrder: 1
+        - Name: Deploy
+          Actions:
+          - InputArtifacts:
+            - Name: MyAppBuild
+            Name: DeployToProd
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CodeDeploy
+            OutputArtifacts: []
+            Configuration:
+              ApplicationName:
+                Ref: CodeDeployApplication
+              DeploymentGroupName:
+                Ref: DeploymentGroup
+            RunOrder: 1
+            
+   
   
   ArtifactsBucket:
     DeletionPolicy: Delete
