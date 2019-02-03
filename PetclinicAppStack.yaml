@@ -18,7 +18,7 @@ Resources:  # Resursu definesanas sadala
       PubliclyAccessible: false # Definets, ka datubazes instance nav publiski pieejama
       VPCSecurityGroups: # Dinamiski defineta drosibas grupa ieks izveleta VPC tikla
       - !GetAtt DBEC2SecurityGroup.GroupId
-  PetclinicLoadBalancer: # Deklarets aplikaciju tikla slodzes lidzsvarotajs
+  PetclinicLoadBalancer: # Deklarets aplikaciju tikla slodzes lidzsvarotajs - darbojas "OSI" modela 7. limeni ("HTTP/S" protokli)
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
     Properties: # Definetas aplikaciju tikla slodzes lidzsvarotaja ipasibas
       Scheme: "internet-facing" # Definets, ka piekluve no interneta pieejama
@@ -63,7 +63,7 @@ Resources:  # Resursu definesanas sadala
       AutoScalingReplacingUpdate:
         WillReplace: true
     Type: "AWS::AutoScaling::AutoScalingGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
-    Properties: # Definetas automatiskas merogosanas grupas ipasibas
+    Properties: # Definetas automatiskas merogosanas grupas ipasibas      
       Cooldown: 300
       DesiredCapacity: "2" # Definets, ka sai grupai jasastav no 2 serveru instancem
       HealthCheckType: "ELB" # AWS resursa tips pret kuru tiks veikta statusa parbaude - saja gadijuma aplikaciju tikla slodzes lidzsvarotajs, kurs var noteikt statusu netikai instancei, bet ari pasai aplikacijai
@@ -78,7 +78,7 @@ Resources:  # Resursu definesanas sadala
   LaunchConfiguration: # Deklareta palaisanas konfiguracija "EC2" resursa servera instancem, kuru izmanto automatiskas merogosanas grupa servera instancu konfiguresanai
     Type: "AWS::AutoScaling::LaunchConfiguration" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-launchconfig.html  
     Properties: 
-      InstanceType: t2.small # Statiski definets velamais "EC2" resursa tips - apzime virtuala servera izmera un jaudas apmerus
+      InstanceType: t2.micro # Statiski definets velamais "EC2" resursa tips - apzime virtuala servera izmera un jaudas apmerus
       IamInstanceProfile: !Ref "S3BucketsInstanceProfile" # Atsauce uz pielaizu profilu, kas tiks asociets ar instancem
       ImageId: ami-035be7bafff33b6b6 # Statiski definets velamais "EC2" resursa - virtuala servera - imidza identifikacijas nummurs - saja gadijuma "Amazon Linux 2 AMI", no kura tiks veidotas servera instances
       SecurityGroups:
@@ -217,16 +217,21 @@ Resources:  # Resursu definesanas sadala
         ToPort: 3306
         SourceSecurityGroupId: 
           Ref: EC2SecurityGroup               
-Outputs:
-  DNSEndpoint:
+Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vertibas
+  DNSEndpoint: 
     Description: Application address
-    Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]]
+    Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]] # Defineta vertiba izvadei - domena nosaukuma adrese aplikaciju tikla slodzes lidzsvarotajam
   DBEndpoint:
-    Description: PetclinicDatabase endpoint
-    Value: !GetAtt PetclinicDatabase.Endpoint.Address
-  
+    Description: Database endpoint
+    Value: !GetAtt PetclinicDatabase.Endpoint.Address # Defineta vertiba izvadei - datubazes galapunkts
+  AutoScalingGroup:
+    Description: AutoScaling group name
+    Value: !Ref AutoScalingGroup # Defineta vertiba izvadei - aplikaciju tikla slodzes lidzsvarotaja nosaukums
+    Export: 
+      Name: !Join [":",[ !Ref "AWS::StackName", AutoScalingGroup]] # Definets, ka si vertiba jaeksporte ka mainigais, lai to varetu izmantot citas "CloudFormation" grupas
 
+# Citi resursi:
 # https://stackoverflow.com/questions/48529074/how-is-target-groups-different-from-auto-scaling-groups-in-aws
 
-
+# ToDo: Add proper naming for resources
   
