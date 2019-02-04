@@ -109,12 +109,13 @@ Resources:
                   - autoscaling:*
                 Resource: "*"
   CodeBuildProject:
-    Type: AWS::CodeBuild::Project
-    DependsOn: CodeBuildRole
-    Properties:        
-      Description: "Build application"     
+    Type: AWS::CodeBuild::Project # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html
+    DependsOn: CodeBuildRole 
+    Properties:
+      Name: !Join ["-",[ !Ref "AWS::StackName", "BuildProject"]]       
       Artifacts:
-        Type: no_artifacts
+        Type: NO_ARTIFACTS
+      Description: "Build application"    
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/java:openjdk-8
@@ -130,25 +131,21 @@ Resources:
             - !Ref 'CodeCommitRepoName'
   CodeDeployApplication:
     Properties:
-      ApplicationName: !Ref 'AWS::StackName'
+      ApplicationName: !Join ["-",[ !Ref "AWS::StackName", "DeploymentApplication"]] # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-application.html
     Type: "AWS::CodeDeploy::Application"   
   DeploymentGroup:
-    Type: "AWS::CodeDeploy::DeploymentGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-deploymentgroup.html
+    Type: "AWS::CodeDeploy::DeploymentGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-deploymentgroup.html    
     Properties:
-      DeploymentGroupName: !Join
-      - '-'
-      - - !Ref 'AWS::StackName'
-        - DeploymentGroup
-      ApplicationName: !Ref CodeDeployApplication        
-      ServiceRoleArn: arn:aws:iam::035868780374:role/CodeDeployServiceRole    
+      ApplicationName: !Ref CodeDeployApplication      
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
+      DeploymentGroupName: !Join ["-",[ !Ref "AWS::StackName", "DeploymentGroup"]]
+      ServiceRoleArn: arn:aws:iam::035868780374:role/CodeDeployServiceRole    
       AutoScalingGroups: 
-        -
-          Fn::ImportValue:
-              !Sub "${SharedResourceStack}:AutoScalingGroup"
+        - Fn::ImportValue: !Sub "${SharedResourceStack}:AutoScalingGroup"
   Pipeline:
-    Type: AWS::CodePipeline::Pipeline
+    Type: "AWS::CodePipeline::Pipeline" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codepipeline-pipeline.html
     Properties:
+      Name: !Join ["-",[ !Ref "AWS::StackName", "Pipeline"]]
       ArtifactStore:
         Location: !Ref "ArtifactsBucket"
         Type: S3    
@@ -157,40 +154,40 @@ Resources:
         - Name: Source
           Actions:
           - InputArtifacts: []
-            Name: SourceAction
+            Name: "SCM Checkout"
             ActionTypeId:
               Category: Source
               Owner: AWS
               Provider: CodeCommit
               Version: '1'
             OutputArtifacts:
-            - Name: MyApp              
+            - Name: "SourceOutputArtifact"              
             Configuration:
               RepositoryName: "Petclinic"
               BranchName: "master"
               PollForSourceChanges: true              
         - Name: Build
           Actions:
-          - InputArtifacts:
-            - Name: MyApp
-            Name: Build
+          - InputArtifacts: 
+            - Name: "SourceOutputArtifact"
+            Name: "Build"
             ActionTypeId:
               Category: Build 
               Owner: AWS
               Provider: CodeBuild
               Version: '1'
             OutputArtifacts: 
-            - Name: MyAppBuild           
+            - Name: "BuildOutputArtifact"           
             Configuration:
               ProjectName: !Ref CodeBuildProject  
             RunOrder: 1
         - Name: Deploy
           Actions:
           - InputArtifacts:
-            - Name: MyAppBuild
-            Name: DeployToProd
+            - Name: "BuildOutputArtifact" 
+            Name: "Deploy"
             ActionTypeId:
-              Category: Deploy
+              Category: "Deploy"
               Owner: AWS
               Version: '1'
               Provider: CodeDeploy
@@ -202,16 +199,11 @@ Resources:
                 Ref: DeploymentGroup
             RunOrder: 1  
   ArtifactsBucket:
-    Type: AWS::S3::Bucket
+    Type: "AWS::S3::Bucket" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html
+    BucketName: !Join ["-",[ !Ref "AWS::StackName", "ArtifactBucket"]]
     DeletionPolicy: Delete
     Description: S3 bucket for AWS CodePipeline and CodeBuild artifacts
-    Properties:
-      Tags:
-      - Key: Name
-        Value: !Join
-        - '-'
-        - - !Ref 'AWS::StackName'
-          - ArtifactsBucket
+    Properties:      
       VersioningConfiguration:
         Status: Enabled
 
