@@ -139,7 +139,7 @@ Resources:
       ApplicationName: !Ref CodeDeployApplication      
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
       DeploymentGroupName: !Join ["-",[ !Ref "AWS::StackName", "DeploymentGroup"]]
-      ServiceRoleArn: arn:aws:iam::035868780374:role/CodeDeployServiceRole    
+      ServiceRoleArn: !GetAtt CodeDeployRole.Arn   
       AutoScalingGroups: 
         - Fn::ImportValue: !Sub "${SharedResourceStack}:AutoScalingGroup"
   Pipeline:

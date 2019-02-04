@@ -5,7 +5,27 @@ Parameters: # Ievadparametru sadala https://docs.aws.amazon.com/AWSCloudFormatio
     Type: "AWS::EC2::Subnet::Id" # Izveles parametrs apakstikla izvelei, kura tiks izvietota pirma servera instance
   VpcSubnetB:
     Type: "AWS::EC2::Subnet::Id" # Izveles parametrs apakstikla izvelei, kura tiks izvietota otra servera instance
-Resources:  # Resursu definesanas sadala   
+Resources:  # Resursu definesanas sadala  
+  EC2S3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: ec2-s3
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: "s3:*"
+            Resource: "*"
+          Version: '2012-10-17'    
   PetclinicDatabase: # Deklareta datubazes izveide
     Type: "AWS::RDS::DBInstance" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html
     Properties: # Definetas datubazes ipasibas
@@ -53,13 +73,13 @@ Resources:  # Resursu definesanas sadala
     Type: "AWS::IAM::InstanceProfile" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
     Properties: 
       Path: "/"
-      Roles: ["MyS3Role"] # Manuali izveidota piekluves vadibas loma, kas ietver piekluvju noteikumus "S3" glabatuves objektiem            
+      Roles: [!Ref EC2S3Role]             
   AutoScalingGroup: # Deklareta automatiska merogosanas grupa
-    CreationPolicy:
+    CreationPolicy: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-creationpolicy.html
       ResourceSignal:
         Count: 2
         Timeout: "PT5M"
-    UpdatePolicy:
+    UpdatePolicy: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-updatepolicy.html
       AutoScalingReplacingUpdate:
         WillReplace: true
     Type: "AWS::AutoScaling::AutoScalingGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
@@ -164,9 +184,9 @@ Resources:  # Resursu definesanas sadala
                 ensureRunning: "true"    
         install_codedeploy: # Deklareta jaunu konfiguraciju izpildes grupa, kas nodrosinas virtualo serveru mijiedarbibu ar "CodeDeploy" resursu
           packages: # Definets kadam programmaturu paketem jabut instaletam uz servera
-            yum:
+            yum: # Deineta nepieciesamo pakesu instalacija un to menedzmenta sistema, kas tiks izmantota instalacijai - "yum"
               ruby: []                         
-          commands:   
+          commands: # Definetas vairakas komandas, kas jaizpilda uz virtualo serveru instancem 
             get_install_file:
               cwd: "/home/ec2-user"
               test: "test ! -e install"
@@ -192,31 +212,20 @@ Resources:  # Resursu definesanas sadala
     Properties:
       GroupDescription: !Join [" ", [!Ref 'AWS::StackName', EC2 Instance Security Group]]
       VpcId: !Ref VpcId
-  EC2InboundRule: # EC2 can only accept traffic from ALB
-    Type: "AWS::EC2::SecurityGroupIngress" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html
-    Properties:
-      IpProtocol: "tcp"
-      FromPort: 80
-      ToPort: 80
-      SourceSecurityGroupId:
-        !GetAtt
-        - ALBSecurityGroup
-        - GroupId
-      GroupId:
-        !GetAtt
-        - EC2SecurityGroup
-        - GroupId    
+      SecurityGroupIngress:
+      - IpProtocol: "tcp"
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref ALBSecurityGroup   
   DBEC2SecurityGroup: # Deklareta datubazes drosibas grupa
     Type: "AWS::EC2::SecurityGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
     Properties:
       GroupDescription: !Join [" ", [!Ref 'AWS::StackName', DB Security Group]]
       SecurityGroupIngress:
-      - 
-        IpProtocol: "tcp"
+      - IpProtocol: "tcp"
         FromPort: 3306
         ToPort: 3306
-        SourceSecurityGroupId: 
-          Ref: EC2SecurityGroup               
+        SourceSecurityGroupId: !GetAtt EC2SecurityGroup.GroupId # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html          
 Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vertibas
   DNSEndpoint: 
     Description: Application address
@@ -233,5 +242,7 @@ Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vert
 # Citi resursi:
 # https://stackoverflow.com/questions/48529074/how-is-target-groups-different-from-auto-scaling-groups-in-aws
 
-# ToDo: Add proper naming for resources
+# ToDo: 
+# - Add proper naming for resources
+# - Add correct proxy settings for httpd
   
