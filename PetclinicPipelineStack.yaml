@@ -154,7 +154,7 @@ Resources:
         - Name: Source
           Actions:
           - InputArtifacts: []
-            Name: "SCM Checkout"
+            Name: "ScmCheckout"
             ActionTypeId:
               Category: Source
               Owner: AWS
@@ -200,7 +200,6 @@ Resources:
             RunOrder: 1  
   ArtifactsBucket:
     Type: "AWS::S3::Bucket" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html
-    BucketName: !Join ["-",[ !Ref "AWS::StackName", "ArtifactBucket"]]
     DeletionPolicy: Delete
     Description: S3 bucket for AWS CodePipeline and CodeBuild artifacts
     Properties:      

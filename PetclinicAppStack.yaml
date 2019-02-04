@@ -1,4 +1,4 @@
-Parameters: # Ievadparametru sadala
+Parameters: # Ievadparametru sadala https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
   VpcId:
     Type: "AWS::EC2::VPC::Id" # Izveles parametrs VPC izvelei, kura tiks izvietoti resursi
   VpcSubnetA:
