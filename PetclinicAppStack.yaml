@@ -1,31 +1,31 @@
-Parameters: # Ievadparametru sadala https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
-  VpcId:
-    Type: "AWS::EC2::VPC::Id" # Izveles parametrs VPC izvelei, kura tiks izvietoti resursi
-  VpcSubnetA:
-    Type: "AWS::EC2::Subnet::Id" # Izveles parametrs apakstikla izvelei, kura tiks izvietota pirma servera instance
-  VpcSubnetB:
-    Type: "AWS::EC2::Subnet::Id" # Izveles parametrs apakstikla izvelei, kura tiks izvietota otra servera instance
+Parameters: # Ievadparametru sadala 
+  VpcId: # Izveles parametrs VPC izvelei, kura tiks izvietoti resursi
+    Type: "AWS::EC2::VPC::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+  VpcSubnetA: # Izveles parametrs apakstikla izvelei, kura tiks izvietota pirma servera instance
+    Type: "AWS::EC2::Subnet::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+  VpcSubnetB: # Izveles parametrs apakstikla izvelei, kura tiks izvietota otra servera instance
+    Type: "AWS::EC2::Subnet::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Resources:  # Resursu definesanas sadala  
-  EC2S3Role:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
+  EC2S3Role: # Deklareta jauna "loma", jeb atlauju kopums. Saja gadijuma "EC2" resursa atlaujas, lai virtualas masinas varetu pieklut "S3" resursa glabatuvem
+    Type: AWS::IAM::Role # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+    Properties: # Defineti atlauju atributi
+      AssumeRolePolicyDocument: # Defineti atlauju noteiktumi
+        Version: '2012-10-17'
         Statement:
         - Effect: Allow
           Principal:
             Service:
-            - ec2.amazonaws.com
+            - ec2.amazonaws.com # Definets kuram resursam tiks pieskirtas sis atlaujas
           Action:
-          - sts:AssumeRole
+          - sts:AssumeRole 
       Path: "/"
-      Policies:
-      - PolicyName: ec2-s3
+      Policies: # Defineti noteikumu
+      - PolicyName: ec2-s3 # Noteikumu kopas nosaukums
         PolicyDocument:
-          Statement:
+          Statement: # Definetas noteiktas darbibas, kas tiks atlautas sim resursam
           - Effect: Allow
-            Action: "s3:*"
+            Action: "s3:*" # Defineta atlauja izpildit visas darbibas ar "S3" resursu
             Resource: "*"
-          Version: '2012-10-17'    
   PetclinicDatabase: # Deklareta datubazes izveide
     Type: "AWS::RDS::DBInstance" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html
     Properties: # Definetas datubazes ipasibas
@@ -73,7 +73,7 @@ Resources:  # Resursu definesanas sadala
     Type: "AWS::IAM::InstanceProfile" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
     Properties: 
       Path: "/"
-      Roles: [!Ref EC2S3Role]             
+      Roles: [!Ref EC2S3Role] # Atsauce uz "lomu", jeb noteiktumu kopumu, kas jasaista ar so resursu profilu             
   AutoScalingGroup: # Deklareta automatiska merogosanas grupa
     CreationPolicy: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-creationpolicy.html
       ResourceSignal:
