@@ -3,7 +3,7 @@ CloudFormation templates for Petclinic application delivery automation
 1. Create Git repository in "CodeCommit" for Petclinic application
 2. Configure the application to use MySql as its database
 3. Launch NetworkStack.yaml -> Creates VPC network: 2 public and 2 private subnes, 1 Internet Gateway, 2 NAT gateways + 2 elastic IPs, 2 private and 1 public route tables.
-4. Launch SecurityStack.yaml -> Creates VPC security groups: 1 for ALBs, 1 for EC2 instances, 1 for databases
+4. Launch SecurityStack.yaml -> Creates VPC security groups: 1 for ALBs, 1 for EC2 instances, 1 for databases.
 4. Launch Database.yaml -> Creates RDS instance and its replica based on MySql engine in your VPC.
 .....
 5. Launch PetclinicAppStack.yaml -> Creates shared resources visualized in "Resource architecture overview"
