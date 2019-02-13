@@ -6,38 +6,7 @@ Parameters: # Ievadparametru sadala
   VpcSubnetB: # Izveles parametrs apakstikla izvelei, kura tiks izvietota otra servera instance
     Type: "AWS::EC2::Subnet::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
 Resources:  # Resursu definesanas sadala  
-  EC2S3Role: # Deklareta jauna "loma", jeb atlauju kopums. Saja gadijuma "EC2" resursa atlaujas, lai virtualas masinas varetu pieklut "S3" resursa glabatuvem
-    Type: AWS::IAM::Role # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
-    Properties: # Defineti atlauju atributi
-      AssumeRolePolicyDocument: # Defineti atlauju noteiktumi
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com # Definets kuram resursam tiks pieskirtas sis atlaujas
-          Action:
-          - sts:AssumeRole 
-      Path: "/"
-      Policies: # Defineti noteikumu
-      - PolicyName: ec2-s3 # Noteikumu kopas nosaukums
-        PolicyDocument:
-          Statement: # Definetas noteiktas darbibas, kas tiks atlautas sim resursam
-          - Effect: Allow
-            Action: "s3:*" # Defineta atlauja izpildit visas darbibas ar "S3" resursu
-            Resource: "*"
-  PetclinicDatabase: # Deklareta datubazes izveide
-    Type: "AWS::RDS::DBInstance" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html
-    Properties: # Definetas datubazes ipasibas
-      AllocatedStorage: "5" 
-      DBInstanceClass: "db.t2.micro" # Datubazes instances klase, AWS ieprieks defineta 
-      DBName: "petclinic" 
-      Engine: "MySQL" # Datubazes programmatura
-      MasterUsername: "root"
-      MasterUserPassword: "petclinic"
-      PubliclyAccessible: false # Definets, ka datubazes instance nav publiski pieejama
-      VPCSecurityGroups: # Dinamiski defineta drosibas grupa ieks izveleta VPC tikla
-      - !GetAtt DBEC2SecurityGroup.GroupId
+  
   PetclinicLoadBalancer: # Deklarets aplikaciju tikla slodzes lidzsvarotajs - darbojas "OSI" modela 7. limeni ("HTTP/S" protokli)
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
     Properties: # Definetas aplikaciju tikla slodzes lidzsvarotaja ipasibas
@@ -69,11 +38,7 @@ Resources:  # Resursu definesanas sadala
       VpcId: !Ref VpcId # Definets virtualais tikls, kura tiks izvietots resurss    
       Port: 80 # Ports uz kuru merka grupas servera instances sanems datuplusmu
       Protocol: "HTTP" # Protokols, kurs tiks izmantots datuplusmas marsutesanai uz merka grupas servera instancem
-  S3BucketsInstanceProfile: # Deklarets, ka tiks definets noteikts pielaizu profils (kurs jau ir ieprieks manuali definets "IAM" resursa sadala), ar kuru tiks asocietas servera instances, lai tas iegutu pieeju "S3" glabatuves resursiem
-    Type: "AWS::IAM::InstanceProfile" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
-    Properties: 
-      Path: "/"
-      Roles: [!Ref EC2S3Role] # Atsauce uz "lomu", jeb noteiktumu kopumu, kas jasaista ar so resursu profilu             
+       
   AutoScalingGroup: # Deklareta automatiska merogosanas grupa
     CreationPolicy: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-creationpolicy.html
       ResourceSignal:
@@ -197,35 +162,8 @@ Resources:  # Resursu definesanas sadala
             install_agent:
               cwd: "/home/ec2-user"
               command: "./install auto"  
-  ALBSecurityGroup: # Deklareta automatiskas merogosanas grupas drosibas grupa 
-    Type: AWS::EC2::SecurityGroup # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
-    Properties:
-      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', ALB Security Group]]
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:      
-        - IpProtocol: tcp
-          ToPort: "80"
-          FromPort: "80"    
-          CidrIp: 0.0.0.0/0    
-  EC2SecurityGroup: # Deklareta virtualo serveru drosibas grupa
-    Type: "AWS::EC2::SecurityGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
-    Properties:
-      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', EC2 Instance Security Group]]
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-      - IpProtocol: "tcp"
-        FromPort: 80
-        ToPort: 80
-        SourceSecurityGroupId: !Ref ALBSecurityGroup   
-  DBEC2SecurityGroup: # Deklareta datubazes drosibas grupa
-    Type: "AWS::EC2::SecurityGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
-    Properties:
-      GroupDescription: !Join [" ", [!Ref 'AWS::StackName', DB Security Group]]
-      SecurityGroupIngress:
-      - IpProtocol: "tcp"
-        FromPort: 3306
-        ToPort: 3306
-        SourceSecurityGroupId: !GetAtt EC2SecurityGroup.GroupId # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html          
+ 
+          
 Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vertibas
   DNSEndpoint: 
     Description: Application address

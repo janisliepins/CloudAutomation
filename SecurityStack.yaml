@@ -1,0 +1,144 @@
+# Resursu grupas ievadparametru vērtību definēšanas sadaļa.
+Parameters: 
+  # Izvēles parametra nosaukums.
+  VpcId: 
+    # Definēts, ka izvēles parametri tiks piedāvāti jau esošie virtuāli privātie tīkli. 
+    # "AWS CloudFormation" resursa parametru sadaļas apraksts:  https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+    Type: AWS::EC2::VPC::Id 
+
+# Resursu definēšanas sadaļa.
+Resources:  
+  # "AWS IAM" resursa loma, jeb noteikumu īpašību definēšanas sadaļa - "EC2S3Role" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  EC2S3Role: 
+    # "AWS IAM" resursa noteikumu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+    Type: AWS::IAM::Role 
+    Properties: 
+      # "Uzticības" noteikumu definīcija, kas tiks asociēta ar šo lomu.
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        # Definēts apgalvojums: atļaut "AWS EC2" resursam pieņemt šo lomu.
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com 
+          Action:
+          - sts:AssumeRole  
+      # Noteikumu īpašību definēšana.
+      # "AWS CloudFormation" resursa noteikumu īpašību dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-policy.html 
+      Policies: 
+      # Noteikumu kopas nosaukums.
+      - PolicyName: ec2-s3 
+        # Definēta noteikumu kopa, jeb dokuments.
+        PolicyDocument:
+          # Definēts apgalvojums: atļaut "AWS EC2" izpildīt visas darbības ar "S3" resursu un visiem tā objektiem.
+          Statement: 
+          - Effect: Allow
+            Action: "s3:*" 
+            Resource: "*"  
+  
+  # "AWS IAM" resursa instanču profila īpašību definēšanas sadaļa - "EC2InstanceProfile" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  EC2InstanceProfile: 
+    # "AWS IAM" resursa instanču profila dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+    Type: AWS::IAM::InstanceProfile 
+    # Instanču, jeb virtuālo mašīnu profila īpašību definīcija - atsauce uz esošu lomu un tās noteikumu kopu, kas tiks asociēta ar šo profilu.
+    Properties: 
+      Roles: [!Ref EC2S3Role]  
+
+  # Aplikāciju tīkla slodzes līdzsvarotāja drošības grupas resursa īpašību definēšanas sadaļa - "ApplicationLoadBalancerSecurityGroup" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  ApplicationLoadBalancerSecurityGroup: 
+    # "AWS EC2" resursa drošības grupu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+    Type: AWS::EC2::SecurityGroup 
+    Properties:
+      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts drošības grupas nosaukums.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
+      GroupName: !Join ["-", [!Ref "AWS::StackName", ALB Security Group]] 
+      # Drošības grupas apraksts.
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow http to application load balancer]]
+      # Datuplūsas ieejas noteikumu definēšana.
+      # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
+      SecurityGroupIngress:  
+      # Definēts interneta protokols, portu un interneta protokola versijas 4 CIDR (bezklases starpdomēnu maršrutēšana) diapazons.
+      - IpProtocol: tcp
+        ToPort: 80
+        FromPort: 80   
+        CidrIp: 0.0.0.0/0 
+      # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
+      VpcId: !Ref VpcId
+
+  # "AWS EC2" resursa virtuālo mašīnu drošības grupas īpašību definēšanas sadaļa - "EC2InstanceSecurityGroup" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  EC2InstanceSecurityGroup: 
+    # "AWS EC2" resursa drošības grupu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts drošības grupas nosaukums.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
+      GroupName: !Join ["-", [!Ref "AWS::StackName", EC2 Instance Security Group]] 
+      # Drošības grupas apraksts.
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow traffic from application load balancer]]
+      # Datuplūsas ieejas noteikumu definēšana.
+      # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
+      SecurityGroupIngress:
+      # Definēts interneta protokols, portu diapazons.
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        # Definēts avots no kura atļaut datuplūsmu - atsauce uz esošu drošības grupu, š.g. aplikāciju tīkla slodzes līdzsvarotāja drošības grupu.
+        SourceSecurityGroupId: !Ref ApplicationLoadBalancerSecurityGroup  
+      # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
+      VpcId: !Ref VpcId 
+
+  # "AWS RDS" resursa datubāzes drošības grupas īpašību definēšanas sadaļa - "DatabaseSecurityGroup" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  DatabaseSecurityGroup: 
+    # "AWS EC2" resursa drošības grupu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+    Type: AWS::EC2::SecurityGroup 
+    Properties:
+      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts drošības grupas nosaukums.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
+      GroupName: !Join ["-", [!Ref "AWS::StackName", RDS Security Group]] 
+      # Drošības grupas apraksts.
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow traffic from EC2 instances]]
+      # Datuplūsas ieejas noteikumu definēšana.
+      # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
+      SecurityGroupIngress: 
+      # Definēts interneta protokols, portu diapazons.
+      - IpProtocol: tcp
+        FromPort: 3306
+        ToPort: 3306
+        # Definēts avots no kura atļaut datuplūsmu - atsauce uz esošu drošības grupu, š.g. virtuālo mašīnu drošības grupa.
+        SourceSecurityGroupId: !Ref EC2InstanceSecurityGroup 
+      # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
+      VpcId: !Ref VpcId 
+
+# Resursu grupas izvaddatu vērtību definēšanas sadaļa.
+# "AWS CloudFormation" resursa izvaddatu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
+Outputs:   
+  # Izvaddatu definīcija: nosaukums, apraksts un vērtība - atsauce uz esošu drošības grupu. Kā arī "export" vērtība, kura var tikt izmantota starp resursu grupām.
+  ApplicationLoadBalancerSecurityGroupOutput: 
+    Description: ALB security group ID
+    Value: !Ref ApplicationLoadBalancerSecurityGroup
+  EC2InstanceSecurityGroupOutput:
+    Description: EC2 Instance security Group ID
+    Value: !Ref EC2InstanceSecurityGroup
+  DatabaseSecurityGroupOutput:
+    Description: Database security group ID
+    Value: !Ref DatabaseSecurityGroup
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", RDSSecurityGroup]] 
+  EC2InstanceProfileOutput:
+    Description: Instance profile of IAM role
+    # Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resursa tips un tā atribūts. 
+    # Nepieciešams izvadīt "AWS::IAM::InstanceProfile" resursa "Arn" atribūtu, lai varētu šo izvaddatu sasaistīt ar nepieciešamajām "EC2" resursa virtuālajām mašīnām.
+    # "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html
+    Value: !GetAtt EC2InstanceProfile.Arn
+    
+ 
