@@ -6,8 +6,10 @@ Parameters:
     # "AWS CloudFormation" resursa parametru sadaļas apraksts:  https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
     Type: AWS::EC2::VPC::Id 
 
+
 # Resursu definēšanas sadaļa.
-Resources:  
+Resources: 
+
   # "AWS IAM" resursa loma, jeb noteikumu īpašību definēšanas sadaļa - "EC2S3Role" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   EC2S3Role: 
     # "AWS IAM" resursa noteikumu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
@@ -57,7 +59,7 @@ Resources:
       # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
       GroupName: !Join ["-", [!Ref "AWS::StackName", ALB Security Group]] 
       # Drošības grupas apraksts.
-      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow http to application load balancer]]
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", ALB Security Group, Allow http to application load balancer]]
       # Datuplūsas ieejas noteikumu definēšana.
       # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
       SecurityGroupIngress:  
@@ -79,9 +81,9 @@ Resources:
       # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
       # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
       # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
-      GroupName: !Join ["-", [!Ref "AWS::StackName", EC2 Instance Security Group]] 
+      GroupName: !Join ["-", [!Ref "AWS::StackName", EC2 Security group]] 
       # Drošības grupas apraksts.
-      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow traffic from application load balancer]]
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", EC2 Security group, Allow traffic from application load balancer]]
       # Datuplūsas ieejas noteikumu definēšana.
       # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
       SecurityGroupIngress:
@@ -119,26 +121,37 @@ Resources:
       # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
       VpcId: !Ref VpcId 
 
+
 # Resursu grupas izvaddatu vērtību definēšanas sadaļa.
 # "AWS CloudFormation" resursa izvaddatu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
 Outputs:   
-  # Izvaddatu definīcija: nosaukums, apraksts un vērtība - atsauce uz esošu drošības grupu. Kā arī "export" vērtība, kura var tikt izmantota starp resursu grupām.
+
+  # Izvaddatu definīcija: nosaukums, apraksts un vērtība, jeb loģiskais ID - atsauce uz esošu drošības grupu. Kā arī "export" vērtība, kura var tikt izmantota starp resursu grupām.
   ApplicationLoadBalancerSecurityGroupOutput: 
     Description: ALB security group ID
     Value: !Ref ApplicationLoadBalancerSecurityGroup
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", ALBSecurityGroup]] 
+
   EC2InstanceSecurityGroupOutput:
     Description: EC2 Instance security Group ID
     Value: !Ref EC2InstanceSecurityGroup
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", EC2SecurityGroup]] 
+
   DatabaseSecurityGroupOutput:
     Description: Database security group ID
     Value: !Ref DatabaseSecurityGroup
     Export: 
       Name: !Join [":", [!Ref "AWS::StackName", RDSSecurityGroup]] 
+
   EC2InstanceProfileOutput:
     Description: Instance profile of IAM role
     # Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resursa tips un tā atribūts. 
     # Nepieciešams izvadīt "AWS::IAM::InstanceProfile" resursa "Arn" atribūtu, lai varētu šo izvaddatu sasaistīt ar nepieciešamajām "EC2" resursa virtuālajām mašīnām.
     # "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-getatt.html
     Value: !GetAtt EC2InstanceProfile.Arn
+    Export: 
+      Name: !Join [":", [!Ref "AWS::StackName", EC2InstanceProfile]] 
     
  

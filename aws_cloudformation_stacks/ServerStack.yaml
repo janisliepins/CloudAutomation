@@ -1,25 +1,31 @@
-Parameters: # Ievadparametru sadala 
-  VpcId: # Izveles parametrs VPC izvelei, kura tiks izvietoti resursi
-    Type: "AWS::EC2::VPC::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
-  VpcSubnetA: # Izveles parametrs apakstikla izvelei, kura tiks izvietota pirma servera instance
-    Type: "AWS::EC2::Subnet::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
-  VpcSubnetB: # Izveles parametrs apakstikla izvelei, kura tiks izvietota otra servera instance
-    Type: "AWS::EC2::Subnet::Id" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
-Resources:  # Resursu definesanas sadala  
+# Resursu grupas ievadparametru vērtību definēšanas sadaļa.
+Parameters: 
   
-  PetclinicLoadBalancer: # Deklarets aplikaciju tikla slodzes lidzsvarotajs - darbojas "OSI" modela 7. limeni ("HTTP/S" protokli)
-    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
+  # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
+  NetworkStack:        
+    Type: String
+    Description: Enter the name of your network stack that you want to associate with your compute resources
+  # Ievadparametra "SecurityStack" deklarācija un tā īpašību definēšana - tips un apraksts.
+  SecurityStack:        
+    Type: String
+    Description: Enter the name of your security stack that you want to associate with your compute resources
+
+# Resursu definēšanas sadaļa.
+Resources:  
+  
+  ApplicationLoadBalancer: # Deklarets aplikaciju tikla slodzes lidzsvarotajs - darbojas "OSI" modela 7. limeni ("HTTP/S" protokli)
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-loadbalancer.html
     Properties: # Definetas aplikaciju tikla slodzes lidzsvarotaja ipasibas
       Scheme: "internet-facing" # Definets, ka piekluve no interneta pieejama
       Subnets: # Defineti divi apakstikli, kas tiks pievienoti aplikaciju tikla slodzes lidzsvarotajam. Vertibas tiek iegutas no izveles parametru sadalas    
-        - !Ref "VpcSubnetA" 
-        - !Ref "VpcSubnetB"     
+        - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PublicSubnet1]] 
+        - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PublicSubnet2]]    
       SecurityGroups: 
-        - !Ref "ALBSecurityGroup" # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu
+        - Fn::ImportValue: !Join [":", [!Ref "SecurityStack", ALBSecurityGroup]]  # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu
   LoadBalancerListener: # Deklarets aplikaciju tikla slodzes lidzsvarotaja klausitajs
     Type: "AWS::ElasticLoadBalancingV2::Listener" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
     Properties: # Definetas aplikaciju tikla slodzes lidzsvarotaja klausitaja ipasibas      
-      LoadBalancerArn: !Ref "PetclinicLoadBalancer" # Atsauce uz ieprieks izveidoto aplikaciju tikla slodzes lidzsvarotaju, kam tiks pievienots sis resurss
+      LoadBalancerArn: !Ref ApplicationLoadBalancer # Atsauce uz ieprieks izveidoto aplikaciju tikla slodzes lidzsvarotaju, kam tiks pievienots sis resurss
       Port: 80 # Ports uz kuru klausas resurss pec ienakosiem datuplusmas pieprasijumiem
       Protocol: "HTTP" # Protokols, kurs jaizmanto klientam, lai sutitu pieprasijumus
       DefaultActions: # Defineta nokluseta darbiba, kas javeic resursam - paradreset uz noteiktu merka grupu, kas deklareta un defineta nakosaja "DefaultTargetGroup" sadala
@@ -35,7 +41,8 @@ Resources:  # Resursu definesanas sadala
       HealthCheckTimeoutSeconds: 5 # Definets, cik ilgi aplikaciju tikla slodzes lidzsvarotajas gaidis atbildi no instances. Saja gadijuma 5 sekundes 
       HealthyThresholdCount: 5 # Definets sekmigu atbilzu skaits, kas jasanem pec kartas no servera instances, lai definetu, ka servera instances statuss ir apmierinoss
       UnhealthyThresholdCount: 2 # Definets nesekmigu atbilzu skaits, kas jasanem pec kartas no servera instances, lai definetu, ka servera instances statuss ir neapmierinos
-      VpcId: !Ref VpcId # Definets virtualais tikls, kura tiks izvietots resurss    
+      VpcId: 
+        Fn::ImportValue: !Join [":", [!Ref "NetworkStack", VPCID]] # Definets virtualais tikls, kura tiks izvietots resurss    
       Port: 80 # Ports uz kuru merka grupas servera instances sanems datuplusmu
       Protocol: "HTTP" # Protokols, kurs tiks izmantots datuplusmas marsutesanai uz merka grupas servera instancem
        
@@ -58,16 +65,17 @@ Resources:  # Resursu definesanas sadala
       MaxSize: "3" # Definets maksimalais servera instancu skaits
       MinSize: "2" # Definets minimalais servera instancu skaits    
       VPCZoneIdentifier: # Defineti divi apakstikli, kuros tiks izvietota katra no serveru instancem. Vertibas tiek iegutas no izveles parametru sadalas 
-        - !Ref VpcSubnetA
-        - !Ref VpcSubnetB
+        - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet1]] 
+        - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet2]] 
   LaunchConfiguration: # Deklareta palaisanas konfiguracija "EC2" resursa servera instancem, kuru izmanto automatiskas merogosanas grupa servera instancu konfiguresanai
     Type: "AWS::AutoScaling::LaunchConfiguration" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-launchconfig.html  
     Properties: 
       InstanceType: t2.micro # Statiski definets velamais "EC2" resursa tips - apzime virtuala servera izmera un jaudas apmerus
-      IamInstanceProfile: !Ref "S3BucketsInstanceProfile" # Atsauce uz pielaizu profilu, kas tiks asociets ar instancem
+      IamInstanceProfile: 
+        Fn::ImportValue: !Join [":", [!Ref "SecurityStack", EC2InstanceProfile]]  # Atsauce uz pielaizu profilu, kas tiks asociets ar instancem
       ImageId: ami-035be7bafff33b6b6 # Statiski definets velamais "EC2" resursa - virtuala servera - imidza identifikacijas nummurs - saja gadijuma "Amazon Linux 2 AMI", no kura tiks veidotas servera instances
       SecurityGroups:
-        - !Ref EC2SecurityGroup # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu    
+        - Fn::ImportValue: !Join [":", [!Ref "SecurityStack", EC2SecurityGroup]] # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu    
       UserData: # Ievaddatu definesana, noteiktu komandu izpildei, kad tiek palaista virtualais serveris
         'Fn::Base64': # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-helper-scripts-reference.html
           !Sub | # Pirma darbiba startejot jaunu servera instanci ir instalet "CloudFormation" paligskriptus, kas laus talak automatized servera konfiguresanu atbilstosi vajadzibam
@@ -161,16 +169,12 @@ Resources:  # Resursu definesanas sadala
               command: "chmod +x ./install"         
             install_agent:
               cwd: "/home/ec2-user"
-              command: "./install auto"  
- 
+              command: "./install auto"   
           
 Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vertibas
   DNSEndpoint: 
     Description: Application address
-    Value: !Join ["", ["http://", !GetAtt PetclinicLoadBalancer.DNSName]] # Defineta vertiba izvadei - domena nosaukuma adrese aplikaciju tikla slodzes lidzsvarotajam
-  DBEndpoint:
-    Description: Database endpoint
-    Value: !GetAtt PetclinicDatabase.Endpoint.Address # Defineta vertiba izvadei - datubazes galapunkts
+    Value: !Join ["", ["http://", !GetAtt ApplicationLoadBalancer.DNSName]] # Defineta vertiba izvadei - domena nosaukuma adrese aplikaciju tikla slodzes lidzsvarotajam  
   AutoScalingGroup:
     Description: AutoScaling group name
     Value: !Ref AutoScalingGroup # Defineta vertiba izvadei - aplikaciju tikla slodzes lidzsvarotaja nosaukums

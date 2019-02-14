@@ -1,14 +1,16 @@
 # Resursu grupas ievadparametru vērtību definēšanas sadaļa.
 Parameters: 
 
-  # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
+  # Ievadparametra "SecurityStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   SecurityStack:        
     Type: String
     Description: Enter the name of your security stack that you want to associate with your DB instance
+
   # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   NetworkStack:        
     Type: String
     Description: Enter the name of your network stack that you want to associate with your DB instance
+
   # Ievadparametra "DatabaseName" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabaseName:
     Type: String
@@ -16,6 +18,7 @@ Parameters:
     MaxLength: 30 
     AllowedPattern: "[a-zA-Z0-9]*" # Defineti ievadparametra struktura, jeb atlautie simboli
     ConstraintDescription: Must contain only alphanumeric characters
+
   # Ievadparametra "DatabaseUser" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabaseUser: 
     Type: String
@@ -23,6 +26,7 @@ Parameters:
     MaxLength: 16
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
     ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
+
   # Ievadparametra "DatabasePassword" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabasePassword: 
     # Ievadparametera "NoEcho" atribūts/īpašība, kas nosaka, ka šis paramaters tiks slēpts.
@@ -33,6 +37,7 @@ Parameters:
     MaxLength: 16
     AllowedPattern: "[a-zA-Z0-9]*"
     ConstraintDescription: Must contain only alphanumeric characters
+
 
 # Resursu definēšanas sadaļa.
 Resources: 
@@ -79,11 +84,13 @@ Resources:
       # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
       # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
       # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
-      DBInstanceIdentifier: !Join [":", [!Ref "AWS::StackName", DatabaseInstance]] 
+      DBInstanceIdentifier: !Join ["-", [!Ref "AWS::StackName", DatabaseInstance]] 
+
       
 # Resursu grupas izvaddatu vērtību definēšanas sadaļa.
 # "AWS CloudFormation" resursa izvaddatu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
 Outputs:   
+
   # Izvaddatu definīcija: nosaukums, apraksts un vērtība.
   DatabaseEndpoint: 
     Description: Database endpoint
