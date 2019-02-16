@@ -1,116 +1,24 @@
 Parameters: # Ievadparametru sadala https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+
   CodeCommitRepoName: # Ievadparametrs, nepieciesams noradit koda glabatuves vietas nosaukumu, kura izveidota manuali ieprieks
     Type: String 
-    Default: Petclinic
-  SharedResourceStack: # Ievadparametrs, nepieciesams noradit ieprieks izveidotu resursu grupas nosaukumu, uz kuras resursiem tiks izvietota aplikacija, jeb darbosies automatiska izvietosana
+
+  ServerStack: # Ievadparametrs, nepieciesams noradit ieprieks izveidotu resursu grupas nosaukumu, uz kuras resursiem tiks izvietota aplikacija, jeb darbosies automatiska izvietosana
     Type: String
     MinLength: 1
     MaxLength: 255 # Definets ievadparametra simbolu skaita limits
     AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$" # Defineti ievadparametra struktura, jeb atlautie simboli
-    Default: PetclinicAppStack
+  SecurityStack: # Ievadparametrs, nepieciesams noradit ieprieks izveidotu resursu grupas nosaukumu, uz kuras resursiem tiks izvietota aplikacija, jeb darbosies automatiska izvietosana
+    Type: String
+    MinLength: 1
+    MaxLength: 255 # Definets ievadparametra simbolu skaita limits
+    AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$" # Defineti ievadparametra struktura, jeb atlautie simboli
+
 Resources: # Resursu definesanas sadala  
-  CodePipelineRole: # Deklareta jauna "loma", jeb atlauju kopums. Saja gadijuma atlauju kopums "CodePipeline" resursam.
-    Type: AWS::IAM::Role # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
-    Properties: # Defineti atlauju atributi
-      AssumeRolePolicyDocument: # Defineti atlauju noteiktumi
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - codepipeline.amazonaws.com # Definets kuram resursam tiks pieskirtas sis atlaujas
-          Action:
-          - sts:AssumeRole
-      Path: "/"
-      Policies:
-      - PolicyName: codepipeline-service # Noteikumu kopas nosaukums
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement: # Definetas noteiktas darbibas, kas tiks atlautas sim resursam
-          - Action: # Definetas atlaujas izpildit sekojosas darbibas ar "CodeCommit" resursu
-            - codecommit:GetBranch
-            - codecommit:GetCommit
-            - codecommit:UploadArchive
-            - codecommit:GetUploadArchiveStatus
-            - codecommit:CancelUploadArchive
-            - codebuild:*
-            Resource: "*"
-            Effect: Allow
-          - Action: # Definetas atlaujas izpildit sekojosas darbibas ar "S3" resursu
-            - s3:GetObject
-            - s3:GetObjectVersion
-            - s3:GetBucketVersioning
-            Resource: "*"
-            Effect: Allow
-          - Action:
-            - s3:PutObject
-            Resource:
-            - arn:aws:s3:::codepipeline*
-            Effect: Allow
-          - Action:
-            - codedeploy:CreateDeployment
-            - codedeploy:GetApplicationRevision
-            - codedeploy:GetDeployment
-            - codedeploy:GetDeploymentConfig
-            - codedeploy:RegisterApplicationRevision
-            Resource: "*"
-            Effect: Allow
-          - Action: # Definetas atlaujas izpildit sekojosas darbibas ar dazadiem resursiem
-            - ec2:*
-            - elasticloadbalancing:*
-            - autoscaling:*
-            - s3:*
-            - cloudformation:*
-            - iam:PassRole
-            Resource: "*"
-            Effect: Allow          
-  CodeBuildRole: # Deklareta jauna "loma", jeb atlauju kopums. Saja gadijuma atlauju kopums "CodeBuild" resursam.
-    Type: AWS::IAM::Role # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - codebuild.amazonaws.com # Definets kuram resursam tiks pieskirtas sis atlaujas
-          Action:
-          - sts:AssumeRole
-      Path: "/"
-      Policies:
-      - PolicyName: codebuild-service # Noteikumu kopas nosaukums
-        PolicyDocument:
-          Version: "2012-10-17"
-          Statement:
-          - Effect: Allow
-            Action: "*"
-            Resource: "*"
-  CodeDeployRole: # Deklareta jauna "loma", jeb atlauju kopums. Saja gadijuma atlauju kopums "CodeBuild" resursam.
-    Type: "AWS::IAM::Role"
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-        - Effect: "Allow"
-          Principal:
-            Service:
-              - "codedeploy.amazonaws.com" # Definets kuram resursam tiks pieskirtas sis atlaujas
-          Action:
-          - "sts:AssumeRole"
-      Path: "/"
-      Policies:
-        - PolicyName: allow-autoscaling  # Noteikumu kopas nosaukums
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ec2:*
-                  - autoscaling:*
-                Resource: "*"
+  
   CodeBuildProject: # Deklareta jauna "AWS" resursa, jeb projekta izveide, kurs atbildes par koda kompilaciju
     Type: AWS::CodeBuild::Project # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codebuild-project.html
-    DependsOn: CodeBuildRole # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html
+    #DependsOn: CodeBuildRole # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html
     Properties:
       Name: !Join ["-",[ !Ref "AWS::StackName", "BuildProject"]] # Definets nosaukums izmantojot "AWS" ieprieks definetu funkciju "Join" - savienojot sis resursu grupas nosaukumu ar vardu "BuildProject".       
       Artifacts:
@@ -120,7 +28,8 @@ Resources: # Resursu definesanas sadala
         ComputeType: BUILD_GENERAL1_SMALL # Definets kompilacijas vides tips. 
         Image: aws/codebuild/java:openjdk-8 # Definets "AWS" ieprieks definets un uzglabats "Docker" imidzs, kurs izveidots izoletu konteinera vidi, kura tiks veikta koda kompilacija
         Type: LINUX_CONTAINER 
-      ServiceRole: !Ref 'CodeBuildRole' # Atsauce uz lomu, jeb atlauju kompumu, kas tiks pieskirta sim projektam
+      ServiceRole:
+         Fn::ImportValue: !Join [":", [!Ref "SecurityStack", CodeBuildRole]]  # Atsauce uz lomu, jeb atlauju kompumu, kas tiks pieskirta sim projektam
       Source: # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-codebuild-project-source.html
         Type: CODECOMMIT
         Location: !Join
@@ -129,19 +38,23 @@ Resources: # Resursu definesanas sadala
             - !Ref 'AWS::Region'
             - '.amazonaws.com/v1/repos/'
             - !Ref 'CodeCommitRepoName'
+
   CodeDeployApplication:
     Properties:
       ApplicationName: !Join ["-",[ !Ref "AWS::StackName", "DeploymentApplication"]] # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-application.html
     Type: "AWS::CodeDeploy::Application"   
+
   DeploymentGroup:
     Type: "AWS::CodeDeploy::DeploymentGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codedeploy-deploymentgroup.html    
     Properties:
       ApplicationName: !Ref CodeDeployApplication      
       DeploymentConfigName: CodeDeployDefault.AllAtOnce
       DeploymentGroupName: !Join ["-",[ !Ref "AWS::StackName", "DeploymentGroup"]] # Definets nosaukums izmantojot "AWS" ieprieks definetu funkciju "Join" - savienojot sis resursu grupas nosaukumu ar vardu "DeploymentGroup".
-      ServiceRoleArn: !GetAtt CodeDeployRole.Arn   
+      ServiceRoleArn: 
+        Fn::ImportValue: !Join [":", [!Ref "SecurityStack", CodeDeployRole]] 
       AutoScalingGroups: 
-        - Fn::ImportValue: !Sub "${SharedResourceStack}:AutoScalingGroup"
+        - Fn::ImportValue: !Join [":", [!Ref "ServerStack", AutoScalingGroup]] 
+
   Pipeline: # Deklareta jauna "AWS" resursa izveide, kas nodrosinas nepartrauktu koda kompilaciju un izvietosanu
     Type: "AWS::CodePipeline::Pipeline" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codepipeline-pipeline.html
     Properties:
@@ -149,7 +62,8 @@ Resources: # Resursu definesanas sadala
       ArtifactStore: # Definets, kur tiks glabati "Pipeline" izveidotie artifakti.
         Location: !Ref "ArtifactsBucket" # Atsauce uz definetu glabatuvi.
         Type: S3 # Artefaktu glabatuves resursa tips. 
-      RoleArn: !GetAtt [CodePipelineRole, Arn] # Loma, jeb atlauju kopums, kas tiks asociets ar so "Pipeline", lai ta varetu izpildit nepieciesamas darbibas. Izmantota "AWS" ieprieks definetu funkcija "GetAtt".
+      RoleArn: 
+        Fn::ImportValue: !Join [":", [!Ref "SecurityStack", CodePipelineRole]]  # Loma, jeb atlauju kopums, kas tiks asociets ar so "Pipeline", lai ta varetu izpildit nepieciesamas darbibas. Izmantota "AWS" ieprieks definetu funkcija "GetAtt".
       Stages: # Definetas "Pipeline" fazes. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-codepipeline-pipeline-stages.html
         - Name: Source # Pirmas Fazes nosaukums
           Actions: # Definetas fazes darbibas. https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-codepipeline-pipeline-stages-actions.html
@@ -190,6 +104,7 @@ Resources: # Resursu definesanas sadala
             Configuration:
               ApplicationName: !Ref CodeDeployApplication # Atsauce uz izveidotu resursu, jeb projektu, kurs veiks aplikacijas izvietosanu uz virtualajiem serveriem
               DeploymentGroupName: !Ref DeploymentGroup # Atsauce uz projektu, kura noraditas merka virtualie serveri uz kuriem jaizvieto si aplikacija
+
   ArtifactsBucket: 
     Type: "AWS::S3::Bucket" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html
     DeletionPolicy: Delete

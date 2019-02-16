@@ -9,6 +9,7 @@ Parameters:
   SecurityStack:        
     Type: String
     Description: Enter the name of your security stack that you want to associate with your compute resources
+    
 
 # Resursu definēšanas sadaļa.
 Resources:  
@@ -22,6 +23,7 @@ Resources:
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PublicSubnet2]]    
       SecurityGroups: 
         - Fn::ImportValue: !Join [":", [!Ref "SecurityStack", ALBSecurityGroup]]  # Atsauce uz drosibas grupu, kas tiks asocieta ar so resursu
+
   LoadBalancerListener: # Deklarets aplikaciju tikla slodzes lidzsvarotaja klausitajs
     Type: "AWS::ElasticLoadBalancingV2::Listener" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-listener.html
     Properties: # Definetas aplikaciju tikla slodzes lidzsvarotaja klausitaja ipasibas      
@@ -30,7 +32,8 @@ Resources:
       Protocol: "HTTP" # Protokols, kurs jaizmanto klientam, lai sutitu pieprasijumus
       DefaultActions: # Defineta nokluseta darbiba, kas javeic resursam - paradreset uz noteiktu merka grupu, kas deklareta un defineta nakosaja "DefaultTargetGroup" sadala
         - Type: "forward" 
-          TargetGroupArn: !Ref "DefaultTargetGroup"      
+          TargetGroupArn: !Ref "DefaultTargetGroup"    
+
   DefaultTargetGroup: # Deklareta merka grupa aplikaciju tikla slodzes lidzsvarotaja klausitajam
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html
     Properties: # Definetas merka grupas ipasibas
@@ -67,6 +70,7 @@ Resources:
       VPCZoneIdentifier: # Defineti divi apakstikli, kuros tiks izvietota katra no serveru instancem. Vertibas tiek iegutas no izveles parametru sadalas 
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet1]] 
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet2]] 
+
   LaunchConfiguration: # Deklareta palaisanas konfiguracija "EC2" resursa servera instancem, kuru izmanto automatiskas merogosanas grupa servera instancu konfiguresanai
     Type: "AWS::AutoScaling::LaunchConfiguration" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-launchconfig.html  
     Properties: 
@@ -170,11 +174,14 @@ Resources:
             install_agent:
               cwd: "/home/ec2-user"
               command: "./install auto"   
+
           
 Outputs: # Deklarets, ka bus nepieciesams izvadit noteiktu resursu atributu vertibas
+
   DNSEndpoint: 
     Description: Application address
-    Value: !Join ["", ["http://", !GetAtt ApplicationLoadBalancer.DNSName]] # Defineta vertiba izvadei - domena nosaukuma adrese aplikaciju tikla slodzes lidzsvarotajam  
+    Value: !Join ["", ["http://", !GetAtt ApplicationLoadBalancer.DNSName]] # Defineta vertiba izvadei - domena nosaukuma adrese aplikaciju tikla slodzes lidzsvarotajam 
+
   AutoScalingGroup:
     Description: AutoScaling group name
     Value: !Ref AutoScalingGroup # Defineta vertiba izvadei - aplikaciju tikla slodzes lidzsvarotaja nosaukums
