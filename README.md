@@ -21,3 +21,6 @@ CloudFormation templates for Spring application and infrastructure delivery auto
 # NetworkStack + SecurityStack + DatabaseStack + ServerStack architecture overview
 ![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/ServerStack.png)
 
+# NetworkStack + SecurityStack + DatabaseStack + PipelineStack architecture overview
+![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/PipelineStack.png)
+
