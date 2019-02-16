@@ -65,7 +65,7 @@ Resources:
       HealthCheckGracePeriod: 300 # Definets ilgums sekundes, pec cik ilga laika, kad tiek izveidota jauna servera instance, automatiska merogosanas grupa sak statusa parbaudes
       LaunchConfigurationName: !Ref LaunchConfiguration # Atsauce uz palaisanas konfiguraciju, kura tiks izmantota, izveidojot servera instances un definejot to ipasibas
       TargetGroupARNs: [!Ref DefaultTargetGroup] # Atsauce uz merka grupu
-      MaxSize: "3" # Definets maksimalais servera instancu skaits
+      MaxSize: "2" # Definets maksimalais servera instancu skaits
       MinSize: "2" # Definets minimalais servera instancu skaits    
       VPCZoneIdentifier: # Defineti divi apakstikli, kuros tiks izvietota katra no serveru instancem. Vertibas tiek iegutas no izveles parametru sadalas 
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet1]] 
