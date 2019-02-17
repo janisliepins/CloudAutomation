@@ -1,98 +1,135 @@
+# Resursu grupas ievadparametru vērtību definēšanas sadaļa.
 Parameters:
+
+  # Ievadparametra "VPCCIDR" deklarācija un tā īpašību definēšana - tips, apraksts, atļautie simbolu veidi un to apraksts.
   VPCCIDR:
     Type: String
     Description: CIDR block should be used to create the VPC (e.g. 10.0.0.0/16)
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 10.0.0.0/16)
+
+  # Ievadparametra "PublicSubnet1" deklarācija un tā īpašību definēšana - tips, apraksts, atļautie simbolu veidi un to apraksts.
   PublicSubnet1:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.0.0/24)
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 10.0.0.0/24)
+
+  # Ievadparametra "PublicSubnet2" deklarācija un tā īpašību definēšana - tips, apraksts, atļautie simbolu veidi un to apraksts.
   PublicSubnet2:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.1.0/24)
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 10.0.1.0/24)
+
+  # Ievadparametra "PrivateSubnet1" deklarācija un tā īpašību definēšana - tips, apraksts, atļautie simbolu veidi un to apraksts.
   PrivateSubnet1:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.2.0/24)
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 10.0.2.0/24)
+  
+  # Ievadparametra "PrivateSubnet2" deklarācija un tā īpašību definēšana - tips, apraksts, atļautie simbolu veidi un to apraksts.
   PrivateSubnet2:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.3.0/24)
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 10.0.3.0/24) 
 
+# Resursu definēšanas sadaļa.
 Resources:  
 
+  # "AWS EC2" resursa privatā virtuālā tīkla/mākoņa īpašību definēšanas sadaļa - "VPC" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   VPC:
+    # "AWS Cloudformation EC2 VPC" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
     Type: AWS::EC2::VPC
     Properties:
+      # Definēta bezklases starpdomēnu maršrutēšana un adrešu diapozons šajā tīklā - atsauce uz ievadparametra vērtību.
+      # Deinēts, ka šim tīklam jāatblasta domēnu nosaukumu sistēmas un šajā tīklā esošo resursu adrešu atrisināšana.
       CidrBlock: !Ref VPCCIDR
       EnableDnsSupport: true
       EnableDnsHostnames: true
+      # Tiek definēta resursa atzīmes/birkas nosaukums izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref".
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
       Tags:
       - Key: Name
-        Value: !Sub ${AWS::StackName}-VPC
+        Value: !Join ["-", [!Ref "AWS::StackName", VPC]] 
           
-
+  # "AWS EC2" resursa publiska apakštīkla īpašību definēšanas sadaļa - "PubSubnet1" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   PubSubnet1:
+    # "AWS Cloudformation EC2 Subnet" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
     Type: AWS::EC2::Subnet
     Properties:
+      # Definēts kurā virtuālajā privātajā tīklā tiks izvietots šis apakštīkls - atsauce uz ievadparametru.
+      # Definēta bezklases starpdomēnu maršrutēšana un adrešu diapozons šajā tīklā - atsauce uz ievadparametra vērtību.      
       VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet1
-      AvailabilityZone: !Sub ${AWS::Region}a
+      # Definēta "AWS" pieejamības zona, pseidoparametrs - "AWS::Region"
+      # Apakštīkls tiks izvietots attiecīgi tajā reģionā, kurā lietotājs būs veidojot šo resursu un šī reģiona pieejamības zonā - a.
+      # Deinēts, ka šim tīklam jāatblasta domēnu nosaukumu sistēmas un šajā tīklā esošo resursu adrešu atrisināšana.
+      # Tākā šis būs publisks apakštīkls, tiek arī definēts, ka resursi, kuri tiks izvietoti šajā apakštīklā saņems publiskas IP adreses.
+      AvailabilityZone: !Join ["", [!Ref "AWS::Region", a]] 
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet1-${AWS::Region}a
+          Value: !Join ["-", [!Ref "AWS::StackName", PublicSubnet1, !Ref "AWS::Region", a]] 
 
-  PubSubnet2:
+  # "AWS EC2" resursa otrā publiskā apakštīkla īpašību definēšanas sadaļa - "PubSubnet2" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  PubSubnet2:    
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Ref PublicSubnet2
-      AvailabilityZone: !Sub ${AWS::Region}b
+      # Līdzīgi kā iepriekšējā resursā, šis apakštīkls tiks izvietots attiecīgā reģiona pieejamības zonā, taču šoreiz apakštīkls tiks izvietots citā pieejamības zonā - b.
+      AvailabilityZone: !Join ["", [!Ref "AWS::Region", b]] 
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet2-${AWS::Region}b
+          Value: !Join ["-", [!Ref "AWS::StackName", PublicSubnet2, !Ref "AWS::Region", b]]
 
+  # "AWS EC2" resursa privātā apakštīkla īpašību definēšanas sadaļa - "PriSubnet1" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   PriSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnet1
-      AvailabilityZone: !Sub ${AWS::Region}a
+      AvailabilityZone: !Join ["", [!Ref "AWS::Region", a]] 
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet1-${AWS::Region}a
+          Value: !Join ["-", [!Ref "AWS::StackName", PrivateSubnet1, !Ref "AWS::Region", a]]
 
+  # "AWS EC2" resursa otrā privātā apakštīkla īpašību definēšanas sadaļa - "PriSubnet2" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   PriSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       CidrBlock: !Ref PrivateSubnet2
-      AvailabilityZone: !Sub ${AWS::Region}b
+      AvailabilityZone: !Join ["", [!Ref "AWS::Region", b]] 
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet2-${AWS::Region}b
+          Value: !Join ["-", [!Ref "AWS::StackName", PrivateSubnet2, !Ref "AWS::Region", b]]
 
+  # "AWS EC2" resursa interneta tīkla vārteja - "InternetGateway" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  # "AWS Cloudformation EC2 InternetGateway" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internetgateway.html
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-IGW
-
+          Value: !Join ["", [!Ref "AWS::StackName", IGW]] 
+  # "AWS EC2" resursa interneta tīkla vārtejas piesaistne - "GatewayToInternet" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  # "AWS Cloudformation EC2 VPCGatewayAttachment" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc-gateway-attachment.html
   GatewayToInternet:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
+      # Definēts kurā virtuālajā privātajā tīklā tiks izvietota šī piesaistne - atsauce uz ievadparametru, kā arī atsauce interneta tīkla vārtejas resursu.
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
+  # "AWS EC2" resursa dinamiskā  - "GatewayToInternet" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   NATEIP1:
     Type: AWS::EC2::EIP
     Properties:

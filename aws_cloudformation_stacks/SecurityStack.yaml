@@ -63,7 +63,7 @@ Resources:
       # Datuplūsas ieejas noteikumu definēšana.
       # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html  
       SecurityGroupIngress:  
-      # Definēts interneta protokols, portu un interneta protokola versijas 4 CIDR (bezklases starpdomēnu maršrutēšana) diapazons.
+      # Definēts interneta protokols, portu un atļautais interneta protokola versijas 4 CIDR (bezklases starpdomēnu maršrutēšana) adrešu diapazons.
       - IpProtocol: tcp
         ToPort: 80
         FromPort: 80   

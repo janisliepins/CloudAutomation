@@ -3,6 +3,11 @@ Parameters: # Ievadparametru sadala https://docs.aws.amazon.com/AWSCloudFormatio
   CodeCommitRepoName: # Ievadparametrs, nepieciesams noradit koda glabatuves vietas nosaukumu, kura izveidota manuali ieprieks
     Type: String 
 
+  # Ievadparametra "BranchName" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, apraksts.
+  BranchName:        
+    Type: String    
+    Description: Enter the name your branch you want this pipeline to run against.
+
   ServerStack: # Ievadparametrs, nepieciesams noradit ieprieks izveidotu resursu grupas nosaukumu, uz kuras resursiem tiks izvietota aplikacija, jeb darbosies automatiska izvietosana
     Type: String
     MinLength: 1
@@ -58,7 +63,7 @@ Resources: # Resursu definesanas sadala
   Pipeline: # Deklareta jauna "AWS" resursa izveide, kas nodrosinas nepartrauktu koda kompilaciju un izvietosanu
     Type: "AWS::CodePipeline::Pipeline" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-codepipeline-pipeline.html
     Properties:
-      Name: !Join ["-",[ !Ref "AWS::StackName", "Pipeline"]] # Definets nosaukums izmantojot "AWS" ieprieks definetu funkciju "Join" - savienojot sis resursu grupas nosaukumu ar vardu "Pipeline".
+      Name: !Join ["-",[ !Ref "AWS::StackName", "Pipeline", !Ref BranchName]] # Definets nosaukums izmantojot "AWS" ieprieks definetu funkciju "Join" - savienojot sis resursu grupas nosaukumu ar vardu "Pipeline".
       ArtifactStore: # Definets, kur tiks glabati "Pipeline" izveidotie artifakti.
         Location: !Ref "ArtifactsBucket" # Atsauce uz definetu glabatuvi.
         Type: S3 # Artefaktu glabatuves resursa tips. 
@@ -76,8 +81,8 @@ Resources: # Resursu definesanas sadala
               Version: '1'
             OutputArtifacts: [Name: "SourceOutputArtifact"] # Defineti izvades artifakti, kas tiks izveidoti sis darbibas rezultata
             Configuration: # Defineti nepieciesamie konfiguracijas atributi.
-              RepositoryName: "Petclinic" # Noradits koda glabatuves nosaukums, kam jabut jau ieprieks izveidotam manuali.
-              BranchName: "master" # Noradits koda glabatuves "zars", jeb noteikta datu satura versija, kas jauzskata par avotu saj fazei.
+              RepositoryName: !Ref CodeCommitRepoName # Noradits koda glabatuves nosaukums, kam jabut jau ieprieks izveidotam manuali.
+              BranchName: !Ref BranchName  # Noradits koda glabatuves "zars", jeb noteikta datu satura versija, kas jauzskata par avotu saj fazei.
               PollForSourceChanges: true # Definets, ka "Pipeline" resursam javeic sekosana koda glabatuves izmainam.              
         - Name: Build # Otras Fazes nosaukums
           Actions:

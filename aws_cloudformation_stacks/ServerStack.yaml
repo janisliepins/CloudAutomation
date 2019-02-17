@@ -1,14 +1,20 @@
 # Resursu grupas ievadparametru vērtību definēšanas sadaļa.
 Parameters: 
   
+  # Ievadparametra "InstanceCount" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, apraksts.
+  InstanceCount:        
+    Type: String
+    MinLength: 1
+    MaxLength: 3
+    Description: Enter desired count of EC2 instances.
   # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   NetworkStack:        
     Type: String
-    Description: Enter the name of your network stack that you want to associate with your compute resources
+    Description: Enter the name of your network stack that you want to associate with your compute resources.
   # Ievadparametra "SecurityStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   SecurityStack:        
     Type: String
-    Description: Enter the name of your security stack that you want to associate with your compute resources
+    Description: Enter the name of your security stack that you want to associate with your compute resources.
     
 
 # Resursu definēšanas sadaļa.
@@ -60,13 +66,13 @@ Resources:
     Type: "AWS::AutoScaling::AutoScalingGroup" # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html
     Properties: # Definetas automatiskas merogosanas grupas ipasibas      
       Cooldown: 300
-      DesiredCapacity: "2" # Definets, ka sai grupai jasastav no 2 serveru instancem
+      DesiredCapacity: !Ref InstanceCount # Definets, ka sai grupai jasastav no 2 serveru instancem. Atsauce uz ievadparametra vērtību.
       HealthCheckType: "ELB" # AWS resursa tips pret kuru tiks veikta statusa parbaude - saja gadijuma aplikaciju tikla slodzes lidzsvarotajs, kurs var noteikt statusu netikai instancei, bet ari pasai aplikacijai
       HealthCheckGracePeriod: 300 # Definets ilgums sekundes, pec cik ilga laika, kad tiek izveidota jauna servera instance, automatiska merogosanas grupa sak statusa parbaudes
       LaunchConfigurationName: !Ref LaunchConfiguration # Atsauce uz palaisanas konfiguraciju, kura tiks izmantota, izveidojot servera instances un definejot to ipasibas
       TargetGroupARNs: [!Ref DefaultTargetGroup] # Atsauce uz merka grupu
-      MaxSize: "2" # Definets maksimalais servera instancu skaits
-      MinSize: "2" # Definets minimalais servera instancu skaits    
+      MaxSize: !Ref InstanceCount # Definets maksimalais servera instancu skaits. Atsauce uz ievadparametra vērtību.
+      MinSize: !Ref InstanceCount # Definets minimalais servera instancu skaits. Atsauce uz ievadparametra vērtību.
       VPCZoneIdentifier: # Defineti divi apakstikli, kuros tiks izvietota katra no serveru instancem. Vertibas tiek iegutas no izveles parametru sadalas 
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet1]] 
         - Fn::ImportValue: !Join [":", [!Ref "NetworkStack", PrivateSubnet2]] 
