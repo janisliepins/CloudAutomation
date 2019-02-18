@@ -129,30 +129,43 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
 
-  # "AWS EC2" resursa dinamiskā  - "GatewayToInternet" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  # "AWS EC2" resursa dinamiskā IP adrese - "NATEIP1" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  # "AWS Cloudformation EC2 EIP" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-eip.html
   NATEIP1:
     Type: AWS::EC2::EIP
     Properties:
+      # "Domain" atribūta vienīgā atļautā vērtība - "vpc". Adrese tiks piešķirta iekš virtālā privātā tīkla.
       Domain: vpc
+    # Ja šī adrese tiek definēta tajā pašā veidnē/resursu grupā, kur tiek definēts "VPC" resurss, tad jādeklarē, ka šis adreses resurss ir atkarīgs no "VPCGatewayAttachment" resursa.
+    # "DependsOn" atribūta dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-dependson.html
+    # Adreses resurss tiks izveidots tikai pēc "VPCGatewayAttachment" resursa izveidošanas.
     DependsOn: GatewayToInternet
 
+  # "AWS EC2" resursa otrā dinamiskā IP adrese - "NATEIP2" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   NATEIP2:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
     DependsOn: GatewayToInternet
 
+  # "AWS EC2" resursa tīkla adrešu translēšanas vārteja - "NAT1" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  # "AWS Cloudformation EC2 NatGateway" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-natgateway.html
   NAT1:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt [ NATEIP1, AllocationId ]
+      # Definēts ar kuru dinamisko IP adresi un apakštīklu tiks asociēts šis resurss.
+      # Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūta nepieciešamā vērtība - resurss un tā atribūts.
+      # "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      AllocationId: !GetAtt NATEIP1.AllocationId
       SubnetId: !Ref PubSubnet1
 
+  # "AWS EC2" resursa tīkla adrešu translēšanas otrā vārteja - "NAT2" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   NAT2:
     Type: AWS::EC2::NatGateway
     Properties:
-      AllocationId: !GetAtt [ NATEIP2, AllocationId ]
+      AllocationId: !GetAtt NATEIP2.AllocationId
       SubnetId: !Ref PubSubnet2
+
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable

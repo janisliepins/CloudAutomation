@@ -101,7 +101,7 @@ Outputs:
   # Izvaddatu definīcija: nosaukums, apraksts un vērtība.
   DatabaseEndpoint: 
     Description: Database endpoint
-    # Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resursa tips un tā atribūts. 
+    # Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resurss un tā atribūts. 
     # Nepieciešams izvadīt datubāzes beigupunkta mērķparametru, lai to varētu deklarēt aplikācijā un izveidot savienojumu ar datubāzi.
     # "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
     Value: !GetAtt Database.Endpoint.Address
