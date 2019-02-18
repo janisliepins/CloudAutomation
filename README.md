@@ -37,7 +37,7 @@ CloudFormation templates for Spring application and infrastructure delivery auto
 ![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/PipelineStack.png)
 
 # Example of different stack combinations 
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/StackExample.png)
+![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/StackExample.PNG)
 
 In this example you can see how you can utilize multiple stack combinations. Here we have 3 base stacks - Network, Security and Database. Then we have 2 DEV and TEST Server stacks, which both are associated with 3 base stacks. Then there is DEV and TEST pipeline stacks which correspond to develop and testing branches in the CodeCommit repository. In result you have decoupled your EC2 compute resources based on your application's code state - development or testing but all of these resources are using the same base newtork, security and database resources. Once new code is commited to the repository, depending on the branch where changes were made, this code will be compiled and deployed to corresponding EC2 instances.
 
