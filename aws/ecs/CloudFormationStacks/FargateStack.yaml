@@ -1,0 +1,246 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: 'This stack creates AWS Fargate infrastructure: log group, cluster, service with application load balancer, task definition, container definition, 2 security groups'
+
+Metadata:
+  # Parametri tiek grupēti un kārtoti AWS CloudFormation konsolē.
+  AWS::CloudFormation::Interface:
+    # Saraksts ar parametru grupām.
+    ParameterGroups:
+        # Paramteru grupas nosaukums.
+      - Label:
+          default: Networking configuration 
+        # Paramteri un to parādīšanas kārtība konsolē.
+        Parameters: [VpcIdParamter, PublicSubnetParameterList, PrivateSubnetParameterList, AlbInboundCidrParameter]
+      - Label:
+          default: Fargate configuration
+        Parameters: [ServiceNameParameter, ImageUriParameter, TaskCountParameter, ContainerPortParameter, ServiceSizeParameterList]
+      - Label:
+          default: Tagging
+        Parameters: [EnvironmentTypeParameter]
+
+Parameters:  
+  # Saraksta izvēles parametrs - lietotājs izvēlas, kurā esošā VPC tiks izvietoti steka resursi.
+  VpcIdParamterList:
+    Type: List<AWS::EC2::VPC::Id>
+    Description: Choose in which VPC resources will be deployed  
+  # Saraksta izvēles parametrs - lietotājs izvēlas divus esošus publiskus apakštīklus, kuros tiks izvietots aplikāciju slodzes līdzsvarotājs un tā drošības grupa.  
+  PublicSubnetParameterList:
+    Type: List<AWS::EC2::Subnet::Id>   
+    Description: Select 2 public subnets for application load balancer 
+  # Saraksta izvēles parametrs - lietotājs izvēlas divus esošus privātus apakštīklus, kuros tiks izvietoti konteineri un to drošības grupas.
+  PrivateSubnetParameterList:
+    Type: List<AWS::EC2::Subnet::Id> 
+    Description: Select 2 private subnets for containers   
+  # Ievades parametrs - lietotājs ievada ienākošās datuplūsmas atļauto IP adrešu diapozonu.   
+  AlbInboundCidrParameter:
+    Type: String
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Valid CIDR Block Required
+    Description: 'ALB Security Group inbound IP address space, RFC 1918 address space only. Example: 0.0.0.0/0 for public access'
+    MaxLength: 18
+    MinLength: 9    
+    Default: '0.0.0.0/0'  
+  # Izvēles parametrs - lietotājs izvēlas infrastruktūras vides tipu, kas atbilst un raksturo nepārtrauktas piegādes modeļa izvietošanas posmu.
+  EnvironmentTypeParameterList:
+    Type: String   
+    AllowedValues: [test, production]
+    Description: Choose the environment type
+  # Ievades parametrs - lietotājs ievada konteinera porta nummuru, kuru kartēt uz saimniekdatora, lai sūtītu un saņemtu datuplūsmu. 
+  ContainerPortParameter:    
+    Type: Number
+    MinValue: 0
+    Description: Container port to expose
+  # Ievades parametrs - lietotājs ievada nepieciešamo, vienlaicīgi darbojošo uzdevumu skaitu klāsterī.
+  TaskCountParameter:    
+    Type: Number
+    MinValue: 0
+    Description: Number of desired task count  
+  # Izvēles parametrs - lietotājs izvēlas aptuvenos ECS servisa izmērus, kas atbilst attiecīgās infrastruktūras vides vajadzībām.  
+  ServiceSizeParameterList:
+    Type: String  
+    Description: The size of the ECS service (for cpu and memory allocation)      
+    AllowedValues: [SMALL, MEDIUM, LARGE]
+  # Ievades parametrs - lietotājs ievada ECS servisa nosaukumu.
+  ServiceNameParameter:    
+    Type: String
+    MinLength: 1 
+    Description: Enter name of your ECS service 
+  # Ievades parametrs - lietotājs ievada Docker imidžā URI, kuru izpildīt Docker programmatūrai kā konteineru.  
+  ImageUriParameter:    
+    Type: String    
+    MinLength: 1
+    Description: Docker image URI  
+
+Mappings:
+  # Deklarēts kartējums.
+  ServiceTypeMap:  
+    # Definētas atslēgas un to vērtības - CPU un atmiņas lielumi.
+    SMALL:
+      Cpu: 512
+      Memory: 1024
+    MEDIUM:
+      Cpu: 1024
+      Memory: 2048      
+    LARGE:
+      Cpu: 2048
+      Memory: 4096
+
+# Resursu definēšanas sadaļa.
+Resources:    
+  # Definēta ECS klāstera izveide un īpašības - klāstera nosaukums.
+  FargateCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+
+  # Definēta monitorēšanas žurnāla grupas izveide.
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+  
+  # Definēta Fargate uzdevuma definīcjas faila izveide un saturs, kas apraksta vēlamās uzdevuma un konteinera īpašības.  
+  TaskDefinition:
+    # Dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ecs-taskdefinition.html#cfn-ecs-taskdefinition-executionrolearn
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      # CPU vienību skaits. Tiek izgūts no ServiceTypeMap kartējuma pēc atsauces uz lietotāja izvēles parametru 'Cpu'.
+      Cpu: !FindInMap [ServiceTypeMap, !Ref ServiceSize, 'Cpu'] 
+      # IAM loma, kuru konteiners var pieņemt, lai izpildītu noteiktus procesus.
+      ExecutionRoleArn: 
+        Fn::ImportValue: !Sub ${SecurityStack}:EcsServiceRoleArn
+      # Vecākobjekta nosaukums, pēc kura tiks veidota katra nākamā definīcijas faila versija.  
+      Family: !Sub ${AWS::StackName}-Task-Definition 
+      # Atmiņas lielums, kas būs pieejams konteineram. Tiek izgūts no ServiceTypeMap kartējuma pēc atsauces uz lietotāja izvēles parametru 'Memory'.   
+      Memory: !FindInMap [ServiceTypeMap, !Ref ServiceSize, Memory]       
+      RequiresCompatibilities: [FARGATE]
+      # IAM loma, kuru konteiners var pieņemt, lai izpildītu izsaukumus uz AWS API.
+      TaskRoleArn: 
+        Fn::ImportValue: !Sub ${SecurityStack}:EcsTaskRoleArn 
+      # Konteinera īpašību definēšana.
+      # Dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ecs-taskdefinition-containerdefinitions.html
+      ContainerDefinitions:
+        # Definēts konteinera nosaukums.
+        Name: !Sub ${ServiceName}-service
+        # Definēts Docker imidža URI.
+        Image: !Ref ImageUri
+        # Definēta konteinera porta kartēšana uz resursdatoru.       
+        PortMappings:
+          - ContainerPort: !Ref ContainerPort
+            Protocol: http
+        # Definēta pielāgota žurnāla draivera izveide un tā konfigurācijas.
+        LogConfiguration:
+          # Definēts draivera nosaukums.
+          LogDriver: awslogs
+          # Definētas draivera opcijas. 
+          Options:
+            # Žurnāla grupa (atsauce uz iepriekšdefinētu žurnāla resursu)
+            awslogs-group: !Ref LogGroup
+            # Atsauce uz pseidoparametru AWS::Region
+            awslogs-region: !Ref AWS::Region
+            # Žurnāla prefikss.
+            awslogs-stream-prefix: !Sub awslogs-${ServiceName}-service        
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer 
+    DependsOn: TargetGroup   
+    Properties:      
+      Scheme: internet-facing      
+      SecurityGroups:   
+        - Fn::ImportValue: !Sub ${SecurityStack}:ALBSecurityGroupId        
+      Subnets: 
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2      
+      Tags:
+        - Key: Name
+          Value: ALB
+        - Key: Owner account id
+          Value: !Sub ${AWS::AccountId}
+        - Key: Parent CloudFormation stack
+          Value: !Sub ${AWS::StackName}
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Create a Listener for ECS service LoadBalancer
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener    
+    DependsOn: ApplicationLoadBalancer
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # Create a TargetGroup for LoadBalancer health checks
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:   
+      Name: !Sub ${AWS::StackName}-TargetGroup  
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: !Ref HealtcheckPath
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Port: 80
+      Protocol: HTTP
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId 
+      TargetType: ip    
+      Tags:
+        - Key: Name
+          Value: TargetGroup
+        - Key: Owner account id
+          Value: !Sub ${AWS::AccountId}
+        - Key: Parent CloudFormation stack
+          Value: !Sub ${AWS::StackName}
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Create a Fargate type ECS service
+  FargateService:
+    Type: AWS::ECS::Service    
+    DependsOn: Listener
+    Properties:
+      Cluster: !Ref FargateCluster
+      DeploymentConfiguration:        
+        MinimumHealthyPercent: 100         
+        MaximumPercent: 200 
+      DesiredCount: !Ref TaskCount
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: !Sub ${ServiceName}-service
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: 
+            - Fn::ImportValue: !Sub ${SecurityStack}:ContainerSecurityGroupId
+          Subnets: 
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet1
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet2                     
+      TaskDefinition: !Ref TaskDefinition  
+
+###############Output section#################
+Outputs: 
+  # Definēta klāstera izvaddatu un eksporta vērtība - klāstera nosaukums. 
+  FargateClusterOutput:
+    Description: The ECS Cluster ARN to be used for Fargate service deployments
+    Value: !Ref FargateCluster
+    Export:
+      Name: !Sub ${AWS::StackName}:FargateCluster
+  # Definēta servisa izvaddatu un eksporta vērtība - servisa nosaukums.
+  FargateServiceOutput:
+    Description: The Fargate service to be used for PipeLine
+    Value: !Ref FargateService
+    Export:
+      Name: !Sub ${AWS::StackName}:FargateServiceArn 
+  # Definēta aplikāciju slodzes līdzsvarotāja izvaddatu vērtība - URL.
+  ApplicationLoadBalancerUrl:
+    Description: The DNS for the application load balancer.
+    Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+
+
+      

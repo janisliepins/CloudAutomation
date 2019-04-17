@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This stack creates CodePipeline to build an ECS Fargate service from given CodeCommit repository and branch
+
+Parameters:   
+    
+  FargateStackName:
+    Description: 'Enter the name of your Fargate resource stack. Used exports: FargateServiceArn, FargateClusterArn'
+    Type: String
+    MinLength: 1    
+
+  SecurityStackName:    
+    Description: 'Enter the name of your IAM resource stack. Used exports: CodeBuildRoleArn, CodePipelineRoleArn'
+    Type: String 
+
+  StorageStackName: 
+    Description: 'Enter the name of your IAM resource stack. Used exports: CodeCommitRepositoryURL, CodeCommitRepositoryName, S3BucketID'
+    Type: String     
+
+  SourceRepository:
+    Description: CodeCommit repository name
+    Type: String
+    MinLength: 1  
+
+  ArtifactS3Bucket:
+    Description: The S3 bucket for deploy artifact
+    Type: String
+    MinLength: 1 
+    
+  SourceRepositoryBranchName:
+    Description: CodeCommit repository branch name which to use in pipeline
+    Type: String
+    MinLength: 1      
+
+  ECRRepositoryUri:
+    Description: ECR repository full URI
+    Type: String
+    MinLength: 1  
+
+Resources:  
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project   
+    Properties:
+      Name: !Sub CodeBuildProject-${AWS::StackName}-${SourceRepositoryBranchName}    
+      ServiceRole: 
+        Fn::ImportValue: !Sub ${SecurityStack}:CodeBuildRoleArn          
+      Artifacts:
+        Type: no_artifacts
+      Environment:        
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/java:openjdk-9        
+        PrivilegedMode: true 
+        EnvironmentVariables:          
+          - Name: IMAGE_REPOSITORY
+            Type: PLAINTEXT
+            Value: !Ref ECRRepositoryUri            
+      Source:        
+        Type: CODECOMMIT
+        Location: 
+          Fn::ImportValue: !Sub ${StorageStack}:CodeCommitRepositoryURL         
+      TimeoutInMinutes: 60  
+      Tags:
+        - Key: Name
+          Value: CodeBuildProject
+        - Key: Owner account id
+          Value: !Sub ${AWS::AccountId}
+        - Key: Parent CloudFormation stack
+          Value: !Sub ${AWS::StackName}
+        - Key: Environment
+          Value: !Ref Environment
+  
+  AppPipeline:
+    Type: AWS::CodePipeline::Pipeline    
+    Properties:
+      Name: !Sub CodePipeline-${AWS::StackName}-${SourceRepositoryBranchName} 
+      RoleArn: 
+        Fn::ImportValue: !Sub ${SecurityStack}:CodePipelineRoleArn  
+      Stages:       
+        - Name: Source
+          Actions:
+            - Name: SourceAction
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1               
+                Provider: CodeCommit
+              OutputArtifacts:                
+                - Name: SourceArtifact
+              Configuration:                
+                BranchName: !Ref SourceRepositoryBranchName
+                RepositoryName: !Sub ${StorageStack}:CodeCommitRepositoryName               
+                PollForSourceChanges: true
+              RunOrder: 1        
+        - Name: Build
+          Actions:
+            - Name: BuildAction             
+              InputArtifacts:
+                - Name: SourceArtifact
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:                
+                - Name: BuildArtifact
+              Configuration:                
+                ProjectName: !Ref CodeBuildProject
+                PrimarySource: SourceArtifact
+              RunOrder: 1        
+        - Name: Deploy
+          Actions:
+            - Name: DeployAction
+              InputArtifacts:                
+                - Name: BuildArtifact
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: ECS
+              Configuration:
+                ClusterName: 
+                  Fn::ImportValue: !Sub ${FargateStackName}:FargateClusterArn               
+                ServiceName: 
+                  Fn::ImportValue: !Sub ${FargateStackName}:FargateServiceArn               
+                FileName: imagedefinitions.json 
+              RunOrder: 1
+      ArtifactStore:
+        Type: S3
+        Location:
+          Fn::ImportValue: !Sub ${StorageStackName}:S3BucketID
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Pipeline configuration
+        Parameters:
+          - FargateStackName
+          - SecurityStackName
+          - StorageStackName          
+          - SourceRepository
+          - SourceRepositoryBranchName
+          - ArtifactS3BucketName
+          - ECRRepositoryUri
+      - Label:
+          default: Tagging
+        Parameters:          
+          - Environment

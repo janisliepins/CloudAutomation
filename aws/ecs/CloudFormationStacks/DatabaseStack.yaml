@@ -1,0 +1,119 @@
+# Resursu grupas ievadparametru vērtību definēšanas sadaļa.
+Parameters: 
+
+  # Ievadparametra "StorageSize" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, apraksts.
+  StorageSize:        
+    Type: String
+    MinLength: 1
+    MaxLength: 3
+    Description: Enter the size of the storage (GB).
+
+  # Ievadparametra "SecurityStack" deklarācija un tā īpašību definēšana - tips un apraksts.
+  SecurityStack:        
+    Type: String
+    Description: Enter the name of your security stack that you want to associate with your DB instance. 
+
+  # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
+  NetworkStack:        
+    Type: String
+    Description: Enter the name of your network stack that you want to associate with your DB instance.
+
+  # Ievadparametra "DatabaseName" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
+  DatabaseName:
+    Type: String
+    MinLength: 1
+    MaxLength: 30 
+    AllowedPattern: "[a-zA-Z0-9]*" 
+    ConstraintDescription: Must contain only alphanumeric characters.
+
+  # Ievadparametra "DatabaseUser" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
+  DatabaseUser: 
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
+
+  # Ievadparametra "DatabasePassword" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
+  DatabasePassword: 
+    # Ievadparametera "NoEcho" atribūts/īpašība, kas nosaka, ka šis paramaters tiks slēpts.
+    # Ievadparametru īpašību dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
+    NoEcho: true
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: Must contain only alphanumeric characters
+
+# Resursu definēšanas sadaļa.
+Resources: 
+  # "AWS RDS" resursa datubāzes instances īpašību definēšanas sadaļa - "Database" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  Database: 
+    # "AWS RDS" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html
+    Type: AWS::RDS::DBInstance 
+    Properties: 
+      # Krātuves apjoms (GB). Atsauce uz ievadparametra vertību.
+      AllocatedStorage: !Ref StorageSize 
+      # "AWS RDS" resursa instances klases tips (visu klašu tipu apraksts: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html)
+      DBInstanceClass: db.t2.micro
+      # Datubāzes nosaukums: Izmantojot "AWS" iepriekšdefinētas funkciju "Ref", tiek definēts nosaukums kā atsauce uz vienu no ievadparametriem.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html 
+      DBName: !Ref DatabaseName       
+      # Datubāzes programmatūra
+      Engine: MySQL 
+      # Datubāzes lietotājvārds un parole: Izmantojot "AWS" iepriekšdefinētas funkciju "Ref", tiek definēti šie atribūti kā atsauce no ievadparametriem.
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      # Definēts, ka datubāzes instance tiks izvietota vairākās pieejamības zonās.
+      MultiAZ: true
+      # Definēts, ka datubāzes instance nav publiski pieejama.
+      PubliclyAccessible: false 
+      # Definēta drošības grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
+      # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies drošības resursu grupas eksportēto vērtību.
+      # "ImportValue" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-importvalue.html      
+      VPCSecurityGroups: 
+        # "ImportValue" lietota garajā pierakstā. Skatīt šo gadījumu augstāk minētajā dokumentācijā.
+        # Pēc dokumentācijas, vērtību tips ir "List of String values", tādēļ tiek izmantots prefikss/indikators šāda tipa vērtībām: "-".
+        # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts nosaukums.
+        # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+        # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+        - Fn::ImportValue: !Sub ${SecurityStack}:DatabaseSecurityGroupId 
+      # Definēta apakštīklu grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
+      # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies tīkla resursu grupas eksportēto vērtību.
+      # Šī īpašība nodrošinās, ka datubāze tiek dublēta attiecīgi definētajos apakštīklos.
+      DBSubnetGroupName: 
+        Fn::ImportValue: !Sub ${NetworkStack}:RDSSubnetGroup
+      # Definēts datubāzes instances identifikators. 
+      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts nosaukums.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
+      DBInstanceIdentifier: !Sub ${AWS::StackName}-DatabaseInstance 
+
+      
+# Resursu grupas izvaddatu vērtību definēšanas sadaļa.
+# "AWS CloudFormation" resursa izvaddatu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
+# Izvaddatu definīcija: nosaukums, apraksts un vērtība.
+# Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resurss un tā atribūts. 
+# Nepieciešams izvadīt datubāzes beigupunkta mērķparametru, lai to varētu deklarēt aplikācijā un izveidot savienojumu ar datubāzi.
+# "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+Outputs:     
+  DatabaseEndpoint: 
+    Description: Database endpoint    
+    Value: !GetAtt Database.Endpoint.Address
+   
+# Definēta metadatu sadaļa. Lietotāja saskarne ar ievadparametriem - to sagrupēšana un birkas nosaukums.
+# Dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudformation-interface.html
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Database configuration 
+        Parameters:          
+          - DatabaseName
+          - DatabaseUser
+          - DatabasePassword
+          - StorageSize
+          - NetworkStack
+          - SecurityStack
