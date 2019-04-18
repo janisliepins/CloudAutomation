@@ -1,0 +1,28 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:       
+      - echo Logging in to Amazon ECR...
+      - REPOSITORY_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPOSITORY}
+      - $(aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION}) 
+      - VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout)
+      - ARTIFACT_ID=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+  build:
+    commands:
+      - echo Maven Build started on `date`      
+      - mvn clean -B install       
+      - echo Dokcer Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} .
+      - docker tag ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} 
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} 
+      - printf '[{"name":"%s","imageUri":"%s"}]' ${TASK_NAME} ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION}  > imagedefinitions.json      
+artifacts:
+  files:
+    - imagedefinitions.json
+

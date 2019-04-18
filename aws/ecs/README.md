@@ -20,26 +20,6 @@ CloudFormation templates for SpringBoot application and infrastructure automatio
 9. Commit your changes to application or run CodePipeline project and enjoy!
 
 
-# Stack export value distribution overview
-![ResourceArchitecture]()
-
-# NetworkStack architecture overview
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/NetworkStack.png)
-
-# NetworkStack + SecurityStack architecture overview
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/SecurityStack.png)
-
-# NetworkStack + SecurityStack + DatabaseStack architecture overview
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/DatabaseStack.png)
-
-# NetworkStack + SecurityStack + DatabaseStack + ServerStack architecture overview
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/ServerStack.png)
-
-# NetworkStack + SecurityStack + DatabaseStack + PipelineStack architecture overview
-![ResourceArchitecture](https://github.com/janisliepins/PetclinicCloudFormation/blob/develop/aws_cloudformation_architecture/PipelineStack.png)
-
-# Example of different stack combinations 
-![ResourceArchitecture]()
 
 
 
