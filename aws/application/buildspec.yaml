@@ -1,28 +1,40 @@
 version: 0.2
 
+# Tiek definētas būvējuma izpildes fāzes.
+# Pirms būvējuma fāzē tiek definēti dažādi mainīgie:
+#   REPOSITORY_URI (ECR repozitorija ARN) tiek izveidots ar ACCOUNT_ID un AWS_DEFAULT_REGION pseido parametriem un CodeBuild projekta vides mainīgo IMAGE_REPOSITORY;
+#   VERSION (Projekta versija) definēta ar Maven izpildes komandu - mvn evaluate;
+#   ARTIFACT_ID (Projekta artefakta identifikators jeb nosaukums) definēta ar Maven izpildes komandu - mvn evaluate.
+# Kā pēdēja darbība tiek izpildīta pieteikšanās ECR repozitorijā.
 phases:
   pre_build:
     commands:       
-      - echo Logging in to Amazon ECR...
-      - REPOSITORY_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPOSITORY}
-      - $(aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION}) 
+      - REPOSITORY_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPOSITORY}      
       - VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.version -q -DforceStdout)
       - ARTIFACT_ID=$(mvn org.apache.maven.plugins:maven-help-plugin:3.1.0:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+      - $(aws ecr get-login --no-include-email --region ${AWS_DEFAULT_REGION}) 
+  # Būvējuma fāzē tiek izpildītas Maven un Docker komandas:
+  #   mvn clean -B install -  izpilda koda kompilāciju un artekta izveidi;
+  #   docker build - tiek izveidots jauns Docker imidžs pēc Dockerfile definīcijas. Docker imidža nosaukums veidots ar CodeBuild vides mainīgo CODEBUILD_RESOLVED_SOURCE_VERSION un
+  #   pirms būvejumā fāzē definētajiem mainīgajiem REPOSITORY_URI un VERSION;
+  #   docker tag - izveidot imidža atzīmi ar CodeBuild vides un pirms būvejumā fāzē definētajiem mainīgajiem. 
   build:
-    commands:
-      - echo Maven Build started on `date`      
-      - mvn clean -B install       
-      - echo Dokcer Build started on `date`
-      - echo Building the Docker image...
+    commands:         
+      - mvn clean -B install           
       - docker build -t ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} .
       - docker tag ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} 
+  # Pēc būvējuma fāzē tiek izpildītas Docker un Linux čaulas komandas:
+  #   docker push -  tiek augšupielādēts Docker imidžs ECR repozitorijā;
+  #   printf - būvējuma saknes līmenī tiek izveidots imagedefinitions.json fails, kas satur informāciju par ECS uzdevuma un Docker imidžā nosaukumumiem.
   post_build:
-    commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
+    commands:      
       - docker push ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION} 
-      - printf '[{"name":"%s","imageUri":"%s"}]' ${TASK_NAME} ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION}  > imagedefinitions.json      
+      - printf '[{"name":"%s","imageUri":"%s"}]' ${TASK_NAME} ${REPOSITORY_URI}:${VERSION}-${CODEBUILD_RESOLVED_SOURCE_VERSION}  > imagedefinitions.json
+      
+# Tiek deklarēti aplikācijas būvējuma artifakti:
+#   Maven izveidotā JAR pakotne un imagedefinitions.json fails.
 artifacts:
   files:
+    - target/*.jar
     - imagedefinitions.json
 
