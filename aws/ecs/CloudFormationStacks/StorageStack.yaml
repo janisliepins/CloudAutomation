@@ -1,0 +1,71 @@
+Description: This template creates CodeCommit, ECR repositories and S3 bucket
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Storage resources 
+        Parameters:          
+          - CodeCommitRepositoryName
+          - CodeCommitRepositoryDescription
+          - EcrRepositoryName    
+         
+
+Parameters:
+  CodeCommitRepositoryName:
+    Type: String
+    Description: Name of your CodeCommit repository    
+    MinLength: 1  
+
+  CodeCommitRepositoryDescription:
+    Type: String
+    Description: Description of your CodeCommit repository    
+    MinLength: 1    
+
+  EcrRepositoryName:
+    Type: String   
+    Description: Name of your ECR repository    
+    MinLength: 1   
+
+
+Resources:  
+  CodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties: 
+      RepositoryDescription: !Ref CodeCommitRepositoryDescription
+      RepositoryName: !Ref CodeCommitRepositoryName
+  
+  ECRRepository:
+    Type: AWS::ECR::Repository     
+    Properties:       
+      RepositoryName: !Ref EcrRepositoryName
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+      
+
+Outputs:  
+  CodeCommitRepositoryUrl:
+    Description: CodeCommit repository URL
+    Value: !GetAtt CodeCommitRepository.CloneUrlHttp   
+    Export: 
+      Name: !Sub ${AWS::StackName}:CodeCommitRepositoryUrl
+
+  CodeCommitRepositoryName:
+    Description: CodeCommit repository name
+    Value: !GetAtt CodeCommitRepository.Name   
+    Export: 
+      Name: !Sub ${AWS::StackName}:CodeCommitRepositoryName 
+
+  S3BucketName:
+    Description: S3 bucket name
+    Value: !Ref S3Bucket
+    Export: 
+      Name: !Sub ${AWS::StackName}:S3BucketName 
+
+
+  
+
+     
+

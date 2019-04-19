@@ -1,0 +1,176 @@
+Description: This stack deploys ECS Task & Service, CodeBuild, CodePipeline roles
+
+
+Resources:  
+  EcsServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs.amazonaws.com, ecs-tasks.amazonaws.com]
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-EcsServiceRolePolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:AttachNetworkInterface'
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:CreateNetworkInterfacePermission'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DeleteNetworkInterfacePermission'
+                  - 'ec2:Describe*'
+                  - 'ec2:DetachNetworkInterface'
+                  - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+                  - 'elasticloadbalancing:DeregisterTargets'
+                  - 'elasticloadbalancing:Describe*'
+                  - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+                  - 'elasticloadbalancing:RegisterTargets'
+                  - 'iam:PassRole'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'logs:DescribeLogStreams'
+                  - 'logs:CreateLogStream'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-EcsTaskRolePolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'logs:CreateLogStream'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:PutLogEvents'
+                  - 'dynamodb:GetItem'
+                Resource: '*'
+  
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+        Version: '2012-10-17'
+      Path: /
+      Policies:  
+        - PolicyName: !Sub ${AWS::StackName}-CodeBuildRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'logs:*'
+                  - 'ec2:CreateNetworkInterface'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DeleteNetworkInterface'
+                  - 'ec2:DescribeSubnets'
+                  - 'ec2:DescribeSecurityGroups'
+                  - 'ec2:DescribeDhcpOptions'
+                  - 'ec2:DescribeVpcs'
+                  - 'ec2:CreateNetworkInterfacePermission'               
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:GetBucketAcl'
+                  - 's3:GetBucketLocation'
+                  - 's3:ListBucket'   
+                  - 'codecommit:GitPull'        
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:InitiateLayerUpload'
+                  - 'ecr:PutImage'
+                  - 'ecr:UploadLayerPart'
+                  - 'ecr:BatchGetImage'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:CompleteLayerUpload'        
+                  - 'ssm:GetParameters'
+                Effect: Allow
+                Resource: '*'
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [codecommit.amazonaws.com, codebuild.amazonaws.com, codepipeline.amazonaws.com, codedeploy.amazonaws.com]
+      Path: /
+      Policies:
+        - PolicyName: !Sub ${AWS::StackName}-CodePipelineRolePolicy
+          PolicyDocument:            
+            Statement:
+              - Action:
+                  - 'logs:*'
+                  - 'ec2:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'ecs:*'
+                  - 'autoscaling:*'               
+                  - 'codecommit:GetCommit'
+                  - 'codecommit:UploadArchive'
+                  - 'codecommit:GetBranch'
+                  - 'codecommit:GetUploadArchiveStatus'    
+                  - 'iam:PassRole'                        
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:GetObjectVersion'              
+                  - 'codebuild:BatchGetBuilds'
+                  - 'codebuild:StartBuild'     
+                  - 'ecr:DescribeImages'
+                Effect: Allow
+                Resource: '*'
+  
+
+Outputs:    
+  EcsServiceRoleArn:
+    Description: ECS Service IAM role Amazon Resource Name
+    Value: !GetAtt EcsServiceRole.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}:EcsServiceRoleArn
+
+  EcsTaskRoleArn:
+    Description: ECS Task IAM role Amazon Resource Name
+    Value: !GetAtt EcsTaskRole.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}:EcsTaskRoleArn
+
+  CodePipelineRoleArn:
+    Description: CodePipeline IAM role Amazon Resource Name
+    Value: !GetAtt CodePipelineRole.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}:CodePipelineRoleArn
+
+  CodeBuildRoleArn:
+    Description: CodeBuild IAM role Amazon Resource Name
+    Value: !GetAtt CodeBuildRole.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}:CodeBuildRoleArn
+
+  
