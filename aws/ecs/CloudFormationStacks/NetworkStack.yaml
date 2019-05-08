@@ -242,25 +242,25 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PubSubnet1
 
-  PubSubnet2RTAssoc:
+  PubSubnet2RtAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PublicRouteTable
       SubnetId: !Ref PubSubnet2
 
-  PrivSubnet1RTAssoc:
+  PrivSubnet1RtAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PriSubnet1
 
-  PrivSubnet2RTAssoc:
+  PrivSubnet2RtAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PriSubnet2
 
-  RDSSubnetGroup:
+  RdsSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
       DBSubnetGroupDescription: RDS DB Subnet group
@@ -306,7 +306,7 @@ Outputs:
 
   DBSubnetGroup:
     Description: Name of the DB Subnet group
-    Value: !Ref RDSSubnetGroup
+    Value: !Ref RdsSubnetGroup
     Export: 
-      Name: !Sub ${AWS::StackName}:RDSSubnetGroup
+      Name: !Sub ${AWS::StackName}:DBSubnetGroup
 

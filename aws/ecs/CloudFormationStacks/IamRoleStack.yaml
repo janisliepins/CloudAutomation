@@ -1,4 +1,4 @@
-Description: This stack deploys ECS Task & Service, CodeBuild, CodePipeline roles
+Description: This stack deploys ECS Task & Service, CodeBuild roles
 
 
 Resources:  
@@ -44,45 +44,28 @@ Resources:
 
   EcsTaskRole:
     Type: AWS::IAM::Role
-    Properties:
+    Properties:      
       AssumeRolePolicyDocument:
         Statement:
-          - Effect: Allow
+          - Action: sts:AssumeRole
+            Effect: Allow 
             Principal:
-              Service: [ecs-tasks.amazonaws.com]
-            Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-        - PolicyName: !Sub ${AWS::StackName}-EcsTaskRolePolicy
-          PolicyDocument:
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 'ecr:GetAuthorizationToken'
-                  - 'ecr:BatchCheckLayerAvailability'
-                  - 'ecr:GetDownloadUrlForLayer'
-                  - 'ecr:BatchGetImage'
-                  - 'logs:CreateLogStream'
-                  - 'logs:CreateLogGroup'
-                  - 'logs:PutLogEvents'
-                  - 'dynamodb:GetItem'
-                Resource: '*'
+              Service: [ecs-tasks.amazonaws.com]            
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
   
   CodeBuildRole:
     Type: AWS::IAM::Role
-    Properties:
+    Properties:      
       AssumeRolePolicyDocument:
         Statement:
-          - Action: ['sts:AssumeRole']
-            Effect: Allow
+          - Action: sts:AssumeRole
+            Effect: Allow        
             Principal:
               Service: [codebuild.amazonaws.com]
-        Version: '2012-10-17'
-      Path: /
       Policies:  
         - PolicyName: !Sub ${AWS::StackName}-CodeBuildRolePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
+          PolicyDocument:            
             Statement:
               - Action:
                   - 'logs:*'
@@ -114,11 +97,11 @@ Resources:
 
   CodePipelineRole:
     Type: AWS::IAM::Role
-    Properties:
+    Properties:      
       AssumeRolePolicyDocument:
         Statement:
-          - Action: ['sts:AssumeRole']
-            Effect: Allow
+          - Action: sts:AssumeRole
+            Effect: Allow        
             Principal:
               Service: [codecommit.amazonaws.com, codebuild.amazonaws.com, codepipeline.amazonaws.com, codedeploy.amazonaws.com]
       Path: /
@@ -146,31 +129,30 @@ Resources:
                   - 'ecr:DescribeImages'
                 Effect: Allow
                 Resource: '*'
-  
 
-Outputs:    
+
+Outputs: 
   EcsServiceRoleArn:
     Description: ECS Service IAM role Amazon Resource Name
     Value: !GetAtt EcsServiceRole.Arn
     Export: 
       Name: !Sub ${AWS::StackName}:EcsServiceRoleArn
-
   EcsTaskRoleArn:
     Description: ECS Task IAM role Amazon Resource Name
     Value: !GetAtt EcsTaskRole.Arn
     Export: 
-      Name: !Sub ${AWS::StackName}:EcsTaskRoleArn
-
-  CodePipelineRoleArn:
-    Description: CodePipeline IAM role Amazon Resource Name
-    Value: !GetAtt CodePipelineRole.Arn
-    Export: 
-      Name: !Sub ${AWS::StackName}:CodePipelineRoleArn
+      Name: !Sub ${AWS::StackName}:EcsTaskRoleArn  
 
   CodeBuildRoleArn:
     Description: CodeBuild IAM role Amazon Resource Name
     Value: !GetAtt CodeBuildRole.Arn
     Export: 
       Name: !Sub ${AWS::StackName}:CodeBuildRoleArn
+  
+  CodePipelineRoleArn:
+    Description: CodePipeline IAM role Amazon Resource Name
+    Value: !GetAtt CodePipelineRole.Arn
+    Export: 
+      Name: !Sub ${AWS::StackName}:CodePipelineRoleArn
 
   

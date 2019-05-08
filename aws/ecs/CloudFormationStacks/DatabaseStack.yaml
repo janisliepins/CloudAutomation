@@ -1,3 +1,22 @@
+Description: This template creates RDS instance 
+
+# Tiek grupēta ievadparametru sekcija
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: RDS instance properties 
+        Parameters:          
+          - DatabaseName
+          - DatabaseUser
+          - DatabasePassword 
+
+      - Label:
+          default: RDS instance associations with other CloudFormation stacks
+        Parameters:          
+          - NetworkStack
+          
+
 # Resursu grupas ievadparametru vērtību definēšanas sadaļa.
 Parameters: 
 
@@ -6,12 +25,7 @@ Parameters:
     Type: String
     MinLength: 1
     MaxLength: 3
-    Description: Enter the size of the storage (GB).
-
-  # Ievadparametra "SecurityStack" deklarācija un tā īpašību definēšana - tips un apraksts.
-  SecurityStack:        
-    Type: String
-    Description: Enter the name of your security stack that you want to associate with your DB instance. 
+    Description: Enter the size of the storage (GB).  
 
   # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   NetworkStack:        
@@ -71,18 +85,12 @@ Resources:
       # Definēta drošības grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
       # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies drošības resursu grupas eksportēto vērtību.
       # "ImportValue" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-importvalue.html      
-      VPCSecurityGroups: 
-        # "ImportValue" lietota garajā pierakstā. Skatīt šo gadījumu augstāk minētajā dokumentācijā.
-        # Pēc dokumentācijas, vērtību tips ir "List of String values", tādēļ tiek izmantots prefikss/indikators šāda tipa vērtībām: "-".
-        # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts nosaukums.
-        # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
-        # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
-        - Fn::ImportValue: !Sub ${SecurityStack}:DatabaseSecurityGroupId 
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]        
       # Definēta apakštīklu grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
       # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies tīkla resursu grupas eksportēto vērtību.
       # Šī īpašība nodrošinās, ka datubāze tiek dublēta attiecīgi definētajos apakštīklos.
       DBSubnetGroupName: 
-        Fn::ImportValue: !Sub ${NetworkStack}:RDSSubnetGroup
+        Fn::ImportValue: !Sub ${NetworkStack}:DBSubnetGroup
       # Definēts datubāzes instances identifikators. 
       # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts nosaukums.
       # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
@@ -90,6 +98,29 @@ Resources:
       # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
       # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
       DBInstanceIdentifier: !Sub ${AWS::StackName}-DatabaseInstance 
+  # "AWS RDS" resursa datubāzes drošības grupas īpašību definēšanas sadaļa - "DatabaseSecurityGroup" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+  DatabaseSecurityGroup: 
+    # "AWS EC2" resursa drošības grupu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+    Type: AWS::EC2::SecurityGroup 
+    Properties:
+      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts drošības grupas nosaukums.
+      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
+      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
+      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
+      GroupName: !Join ["-", [!Ref "AWS::StackName", RDS Security Group]] 
+      # Drošības grupas apraksts.
+      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow traffic from EC2 instances]]
+      # Datuplūsas ieejas noteikumu definēšana.
+      # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html        
+      # Definēts interneta protokols, portu diapazons.
+      SecurityGroupIngress:
+        - CidrIp: 
+            Fn::ImportValue: !Sub ${NetworkStack}:VpcCidrBlock
+          IpProtocol: -1
+      # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
 
       
 # Resursu grupas izvaddatu vērtību definēšanas sadaļa.
@@ -116,4 +147,4 @@ Metadata:
           - DatabasePassword
           - StorageSize
           - NetworkStack
-          - SecurityStack
+       

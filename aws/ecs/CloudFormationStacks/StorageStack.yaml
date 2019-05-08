@@ -1,6 +1,7 @@
 Description: This template creates CodeCommit, ECR repositories and S3 bucket
 
 
+# Tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -10,8 +11,9 @@ Metadata:
           - CodeCommitRepositoryName
           - CodeCommitRepositoryDescription
           - EcrRepositoryName    
-         
-
+ 
+          
+# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma ierobežojumi
 Parameters:
   CodeCommitRepositoryName:
     Type: String
@@ -29,6 +31,10 @@ Parameters:
     MinLength: 1   
 
 
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
+#   1. CodeCommit repozitorijs - apraksts un nosaukums
+#   2. ECR repozitorijs - nosaukums
+#   3. S3 krātuve 
 Resources:  
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
@@ -45,6 +51,10 @@ Resources:
     Type: AWS::S3::Bucket
       
 
+# Definēti izveidoto resursu izvaddati un eksportētās vērtības
+#   1. CodeCommitRepositoryUrl 
+#   2. CodeCommitRepositoryName
+#   3. S3BucketName
 Outputs:  
   CodeCommitRepositoryUrl:
     Description: CodeCommit repository URL
@@ -57,6 +67,12 @@ Outputs:
     Value: !GetAtt CodeCommitRepository.Name   
     Export: 
       Name: !Sub ${AWS::StackName}:CodeCommitRepositoryName 
+
+  EcrRepositoryName:
+    Description: ECR repository name
+    Value: !Sub ${EcrRepositoryName}   
+    Export: 
+      Name: !Sub ${AWS::StackName}:EcrRepositoryName
 
   S3BucketName:
     Description: S3 bucket name
