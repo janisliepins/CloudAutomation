@@ -19,7 +19,10 @@ Metadata:
 
 # Resursu grupas ievadparametru vērtību definēšanas sadaļa.
 Parameters: 
-
+  # Saraksta izvēles parametrs - lietotājs izvēlas, kurā esošā VPC tiks izvietoti steka resursi.
+  VpcId:
+    Type: AWS::EC2::VPC::Id  
+    Description: Choose in which VPC resources will be deployed 
   # Ievadparametra "StorageSize" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, apraksts.
   StorageSize:        
     Type: String
@@ -134,17 +137,3 @@ Outputs:
     Description: Database endpoint    
     Value: !GetAtt Database.Endpoint.Address
    
-# Definēta metadatu sadaļa. Lietotāja saskarne ar ievadparametriem - to sagrupēšana un birkas nosaukums.
-# Dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudformation-interface.html
-Metadata:
-  AWS::CloudFormation::Interface:
-    ParameterGroups:
-      - Label:
-          default: Database configuration 
-        Parameters:          
-          - DatabaseName
-          - DatabaseUser
-          - DatabasePassword
-          - StorageSize
-          - NetworkStack
-       

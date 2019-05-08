@@ -1,4 +1,4 @@
-# Nepārtraukta piegāde AWS mākoņvidē ar ECS un CodePipeline.
+# Nepārtraukta piegāde AWS mākoņvidē ar ECS un CodePipeline
 
 ## Testa aplikācijas sagatavošana
 

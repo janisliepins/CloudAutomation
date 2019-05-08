@@ -6,11 +6,8 @@ Metadata:
   AWS::CloudFormation::Interface:
     # Saraksts ar parametru grupām.
     ParameterGroups:
-        # Paramteru grupas nosaukums.
-      - Label:
-          default: Networking configuration 
-        # Paramteri un to parādīšanas kārtība konsolē.
-        Parameters: [VpcId, PublicSubnets, PrivateSubnets, AlbInboundCidr]
+        # Paramteru grupas nosaukums.       
+        # Paramteri un to parādīšanas kārtība konsolē.       
       - Label:
           default: Fargate configuration
         Parameters: [ServiceName, ImageUri, TaskCount, ContainerPort, ServiceSize]
@@ -18,20 +15,7 @@ Metadata:
           default: Fargate stack associations with other CloudFormation stacks
         Parameters: [IamRoleStack, NetworkStack]
 
-Parameters:  
-  # Saraksta izvēles parametrs - lietotājs izvēlas, kurā esošā VPC tiks izvietoti steka resursi.
-  VpcId:
-    Type: AWS::EC2::VPC::Id  
-    Description: Choose in which VPC resources will be deployed  
-  # Saraksta izvēles parametrs - lietotājs izvēlas divus esošus publiskus apakštīklus, kuros tiks izvietots aplikāciju slodzes līdzsvarotājs un tā drošības grupa.  
-  PublicSubnets:
-    Type: List<AWS::EC2::Subnet::Id>   
-    Description: Select 2 public subnets for application load balancer 
-  # Saraksta izvēles parametrs - lietotājs izvēlas divus esošus privātus apakštīklus, kuros tiks izvietoti konteineri un to drošības grupas.
-  PrivateSubnets:
-    Type: List<AWS::EC2::Subnet::Id> 
-    Description: Select 2 private subnets for containers   
-  # Ievades parametrs - lietotājs ievada ienākošās datuplūsmas atļauto IP adrešu diapozonu.   
+Parameters:     
   AlbInboundCidr:
     Type: String
     AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
@@ -151,7 +135,9 @@ Resources:
     Properties:      
       Scheme: internet-facing      
       SecurityGroups: [!Ref ApplicationLoadBalancerSecurityGroup]               
-      Subnets: [!Select [0, !Ref PublicSubnets], !Select [1, !Ref PublicSubnets]] 
+      Subnets: 
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2 
                
 
   # Create a Listener for ECS service LoadBalancer
@@ -200,7 +186,9 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           SecurityGroups: [!Ref ContainerSecurityGroup]            
-          Subnets: [!Select [0, !Ref PrivateSubnets], !Select [1, !Ref PrivateSubnets]]                             
+          Subnets: 
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet1
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet2                            
       TaskDefinition: !Ref TaskDefinition  
 
   ContainerSecurityGroup:
@@ -208,7 +196,8 @@ Resources:
     Properties:
       GroupName: !Sub ${AWS::StackName}-ContainerSecurityGroup
       GroupDescription: Access to the fargate containers from VPC 
-      VpcId: !Ref VpcId      
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId    
       SecurityGroupIngress:
         - CidrIp: 
             Fn::ImportValue: !Sub ${NetworkStack}:VpcCidrBlock
@@ -219,14 +208,15 @@ Resources:
     Properties:
       GroupName: !Sub ${AWS::StackName}-ApplicationLoadBalancerSecurityGroup
       GroupDescription: Access to the application load balancer 
-      VpcId: !Ref VpcId    
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId    
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: !Ref AlbInboundCidr    
 
-###############Output section#################
+
 Outputs: 
   # Definēta klāstera izvaddatu un eksporta vērtība - klāstera nosaukums. 
   FargateClusterId:
