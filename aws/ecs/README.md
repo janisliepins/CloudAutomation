@@ -14,12 +14,14 @@
 ![Arhitektūra](https://github.com/janisliepins/CloudAutomation/blob/master/aws/ecs/CloudFormationArchitecture/iamrole_stack.png)
 
 
-3. Izveido nepieciešamos tīklošanas resursus: "NetworkStack.yaml" - tiks izveidots virtuāls privāts tīkls ar 2 privātiem apakštīkliem, 2 publiskiem apakštīkliem, maršutēšanas tabulas, interneta vārteja un 2 NAT vārtejas
+3. Izveido nepieciešamos tīklošanas resursus: "NetworkStack.yaml" - tiks izveidots virtuāls privāts tīkls ar 2 privātiem apakštīkliem, 2 publiskiem apakštīkliem, maršutēšanas tabulām, tīkla ACL, interneta vārteju un 2 NAT vārtejām ar 2 IP adresēm
+![Arhitektūra](https://github.com/janisliepins/CloudAutomation/blob/master/aws/ecs/CloudFormationArchitecture/network_stack.png)
 
 
 4. Izveido RDS instanci ar MySQL datubāzi: "IamRoleStack.yaml" 
 
 
+5. Izveido CloudWatch, ECS Fargate un EC2 resursus: "FargateStack.yaml" - tiks izveidots ECS klāsteris, serviss ar Fargate izpildes tipu un konteineri. Papildus tiks izveidota CloudWatch žurnāla grupa un EC2 resursi: aplikāciju slodzes līdzsvarotājs, mērķa grupa un 2 drošības grupas konteineriem un aplikāciju slodzes līdzsvarotājam
 
 
 
