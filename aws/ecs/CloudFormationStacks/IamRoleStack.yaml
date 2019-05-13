@@ -1,18 +1,18 @@
-Description: This stack deploys ECS Task & Service, CodeBuild roles
+Description: This stack deploys ECS Task, ECS Service, CodeBuild and Codepipeline roles
 
 
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
+# EcsServiceRole, EcsTaskRole, CodeBuildRole, CodePipelineRole - ECS servisa, uzdevuma, CodeBuild un CodePipeline lomas un attiecīgās piekļuves politikas dokumenti 
 Resources:  
   EcsServiceRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Statement:
-          - Effect: Allow
+          - Action: sts:AssumeRole   
+            Effect: Allow 
             Principal:
-              Service: [ecs.amazonaws.com, ecs-tasks.amazonaws.com]
-            Action:
-              - sts:AssumeRole
-      Path: /
+              Service: [ecs.amazonaws.com, ecs-tasks.amazonaws.com]                
       Policies:
         - PolicyName: !Sub ${AWS::StackName}-EcsServiceRolePolicy
           PolicyDocument:
@@ -30,8 +30,7 @@ Resources:
                   - 'elasticloadbalancing:DeregisterTargets'
                   - 'elasticloadbalancing:Describe*'
                   - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
-                  - 'elasticloadbalancing:RegisterTargets'
-                  - 'iam:PassRole'
+                  - 'elasticloadbalancing:RegisterTargets'                  
                   - 'ecr:GetAuthorizationToken'
                   - 'ecr:BatchCheckLayerAvailability'
                   - 'ecr:GetDownloadUrlForLayer'
@@ -68,15 +67,7 @@ Resources:
           PolicyDocument:            
             Statement:
               - Action:
-                  - 'logs:*'
-                  - 'ec2:CreateNetworkInterface'
-                  - 'ec2:DescribeNetworkInterfaces'
-                  - 'ec2:DeleteNetworkInterface'
-                  - 'ec2:DescribeSubnets'
-                  - 'ec2:DescribeSecurityGroups'
-                  - 'ec2:DescribeDhcpOptions'
-                  - 'ec2:DescribeVpcs'
-                  - 'ec2:CreateNetworkInterfacePermission'               
+                  - 'logs:*'                                
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:GetBucketAcl'
@@ -90,8 +81,7 @@ Resources:
                   - 'ecr:UploadLayerPart'
                   - 'ecr:BatchGetImage'
                   - 'ecr:GetDownloadUrlForLayer'
-                  - 'ecr:CompleteLayerUpload'        
-                  - 'ssm:GetParameters'
+                  - 'ecr:CompleteLayerUpload'                  
                 Effect: Allow
                 Resource: '*'
 
@@ -103,15 +93,13 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow        
             Principal:
-              Service: [codecommit.amazonaws.com, codebuild.amazonaws.com, codepipeline.amazonaws.com, codedeploy.amazonaws.com]
-      Path: /
+              Service: [codecommit.amazonaws.com, codebuild.amazonaws.com, codepipeline.amazonaws.com, codedeploy.amazonaws.com]     
       Policies:
         - PolicyName: !Sub ${AWS::StackName}-CodePipelineRolePolicy
           PolicyDocument:            
             Statement:
               - Action:
-                  - 'logs:*'
-                  - 'ec2:*'
+                  - 'logs:*'                  
                   - 'cloudwatch:*'
                   - 's3:*'
                   - 'ecs:*'
@@ -119,8 +107,7 @@ Resources:
                   - 'codecommit:GetCommit'
                   - 'codecommit:UploadArchive'
                   - 'codecommit:GetBranch'
-                  - 'codecommit:GetUploadArchiveStatus'    
-                  - 'iam:PassRole'                        
+                  - 'codecommit:GetUploadArchiveStatus'                                         
                   - 's3:GetObject'
                   - 's3:PutObject'
                   - 's3:GetObjectVersion'              
@@ -131,12 +118,18 @@ Resources:
                 Resource: '*'
 
 
+# Definēti izveidoto resursu izvaddati un eksporta vērtības
+#   1. EcsServiceRoleArn - apraksts, ECS servisa lomas resursa ARN vērtība un tās eksports
+#   2. EcsTaskRoleArn - apraksts, ECS uzdevuma lomas resursa ARN vērtība un tās eksports
+#   3. CodeBuildRoleArn - apraksts, CodeBuild lomas resursa ARN vērtība un tās eksports
+#   4. CodePipelineRoleArn - apraksts, CodePipelineRoleArn lomas resursa ARN vērtība un tās eksports
 Outputs: 
   EcsServiceRoleArn:
     Description: ECS Service IAM role Amazon Resource Name
     Value: !GetAtt EcsServiceRole.Arn
     Export: 
       Name: !Sub ${AWS::StackName}:EcsServiceRoleArn
+
   EcsTaskRoleArn:
     Description: ECS Task IAM role Amazon Resource Name
     Value: !GetAtt EcsTaskRole.Arn

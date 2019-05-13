@@ -1,11 +1,12 @@
-Description: This template creates RDS instance 
+Description: This template creates RDS instance with installed MySQL database and security group
+
 
 # Tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: RDS instance properties 
+          default: RDS instance MySQL database properties 
         Parameters:          
           - DatabaseName
           - DatabaseUser
@@ -15,27 +16,26 @@ Metadata:
           default: RDS instance associations with other CloudFormation stacks
         Parameters:          
           - NetworkStack
-          
 
-# Resursu grupas ievadparametru vērtību definēšanas sadaļa.
-Parameters: 
-  # Saraksta izvēles parametrs - lietotājs izvēlas, kurā esošā VPC tiks izvietoti steka resursi.
-  VpcId:
-    Type: AWS::EC2::VPC::Id  
-    Description: Choose in which VPC resources will be deployed 
-  # Ievadparametra "StorageSize" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, apraksts.
+
+# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma un struktūras ierobežojumi
+#   1. StorageSize - datubāzes izmērs
+#   2. NetworkStack - tīkla steka nosaukums
+#   3. DatabaseName - datubāzes nosaukums
+#   4. DatabaseUser - datubāzes lietotājvārds
+#   5. DatabasePassword - datubāzes lietotāja parole
+Parameters:   
   StorageSize:        
     Type: String
     MinLength: 1
     MaxLength: 3
-    Description: Enter the size of the storage (GB).  
+    Description: Enter the size of the storage (GB) 
 
-  # Ievadparametra "NetworkStack" deklarācija un tā īpašību definēšana - tips un apraksts.
   NetworkStack:        
     Type: String
+    MinLength: 1
     Description: Enter the name of your network stack that you want to associate with your DB instance.
 
-  # Ievadparametra "DatabaseName" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabaseName:
     Type: String
     MinLength: 1
@@ -43,7 +43,6 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9]*" 
     ConstraintDescription: Must contain only alphanumeric characters.
 
-  # Ievadparametra "DatabaseUser" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabaseUser: 
     Type: String
     MinLength: 1
@@ -51,10 +50,7 @@ Parameters:
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
     ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
 
-  # Ievadparametra "DatabasePassword" deklarācija un tā īpašību definēšana - tips, minimālais un maksimālais zīmju daudzums, atļautie simbolu veidi un to apraksts.
   DatabasePassword: 
-    # Ievadparametera "NoEcho" atribūts/īpašība, kas nosaka, ka šis paramaters tiks slēpts.
-    # Ievadparametru īpašību dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html
     NoEcho: true
     Type: String
     MinLength: 1
@@ -62,76 +58,43 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9]*"
     ConstraintDescription: Must contain only alphanumeric characters
 
-# Resursu definēšanas sadaļa.
+
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
+#   1. Database - piešķirtais krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, programmatūra, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
+#      liegta publiska piekļuve, kartējums uz drošības grupu un VPC apakštīklu vērtībām
+#   2. DatabaseSecurityGroup - drošības grupas nosaukums, apraksts, ienākošās datuplūsmas noteikumi un kartējums uz VPC vērtību
 Resources: 
-  # "AWS RDS" resursa datubāzes instances īpašību definēšanas sadaļa - "Database" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
   Database: 
-    # "AWS RDS" resursa dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-rds-database-instance.html
     Type: AWS::RDS::DBInstance 
     Properties: 
-      # Krātuves apjoms (GB). Atsauce uz ievadparametra vertību.
       AllocatedStorage: !Ref StorageSize 
-      # "AWS RDS" resursa instances klases tips (visu klašu tipu apraksts: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.DBInstanceClass.html)
-      DBInstanceClass: db.t2.micro
-      # Datubāzes nosaukums: Izmantojot "AWS" iepriekšdefinētas funkciju "Ref", tiek definēts nosaukums kā atsauce uz vienu no ievadparametriem.
-      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html 
+      DBInstanceClass: db.t2.micro     
       DBName: !Ref DatabaseName       
-      # Datubāzes programmatūra
       Engine: MySQL 
-      # Datubāzes lietotājvārds un parole: Izmantojot "AWS" iepriekšdefinētas funkciju "Ref", tiek definēti šie atribūti kā atsauce no ievadparametriem.
       MasterUsername: !Ref DatabaseUser
       MasterUserPassword: !Ref DatabasePassword
-      # Definēts, ka datubāzes instance tiks izvietota vairākās pieejamības zonās.
       MultiAZ: true
-      # Definēts, ka datubāzes instance nav publiski pieejama.
-      PubliclyAccessible: false 
-      # Definēta drošības grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
-      # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies drošības resursu grupas eksportēto vērtību.
-      # "ImportValue" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-importvalue.html      
-      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]        
-      # Definēta apakštīklu grupa iekš esoša virtuālā privātā tīkla, kura tiks asociēta ar šo datubāzes instanci.
-      # Vērtība tiek piešķirta izmantojot "AWS" iepriekšdefinētu funkciju "ImportValue", kura atsauksies tīkla resursu grupas eksportēto vērtību.
-      # Šī īpašība nodrošinās, ka datubāze tiek dublēta attiecīgi definētajos apakštīklos.
+      PubliclyAccessible: false           
+      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]     
       DBSubnetGroupName: 
         Fn::ImportValue: !Sub ${NetworkStack}:DBSubnetGroup
-      # Definēts datubāzes instances identifikators. 
-      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts nosaukums.
-      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
-      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
-      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
-      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
-      DBInstanceIdentifier: !Sub ${AWS::StackName}-DatabaseInstance 
-  # "AWS RDS" resursa datubāzes drošības grupas īpašību definēšanas sadaļa - "DatabaseSecurityGroup" īpašību sadaļas nosaukums, jeb loģiskais identifikators.
+     
   DatabaseSecurityGroup: 
-    # "AWS EC2" resursa drošības grupu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
     Type: AWS::EC2::SecurityGroup 
-    Properties:
-      # Izmantojot "AWS" iepriekšdefinētas funkcijas "Join" un "Ref", tiek definēts drošības grupas nosaukums.
-      # "Ref" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html
-      # "Join" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
-      # Nosaukums tiek konstruēts arī izmantojot "AWS" iepriekš definētus pseidoparametrus, š.g. "AWS::StackName".
-      # "AWS" pseidoparametru dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/pseudo-parameter-reference.html
-      GroupName: !Join ["-", [!Ref "AWS::StackName", RDS Security Group]] 
-      # Drošības grupas apraksts.
-      GroupDescription: !Join ["-", [!Ref "AWS::StackName", RDS Security Group, Allow traffic from EC2 instances]]
-      # Datuplūsas ieejas noteikumu definēšana.
-      # Noteikumu apraksts: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-rule.html        
-      # Definēts interneta protokols, portu diapazons.
+    Properties:     
+      GroupName: !Sub ${AWS::StackName} RDS Security Group 
+      GroupDescription: 
+        Fn::ImportValue: !Sub ${AWS::StackName} RDS Security Group, Allow traffic from within VPC ${NetworkStack}:VpcCidrBlock  
       SecurityGroupIngress:
         - CidrIp: 
             Fn::ImportValue: !Sub ${NetworkStack}:VpcCidrBlock
-          IpProtocol: -1
-      # Atsauce uz ievadparamteru - virtuālo privāto tīklu, kurā tiks izvietota šī drošības grupa.
+          IpProtocol: -1      
       VpcId: 
         Fn::ImportValue: !Sub ${NetworkStack}:VpcId
 
-      
-# Resursu grupas izvaddatu vērtību definēšanas sadaļa.
-# "AWS CloudFormation" resursa izvaddatu dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html
-# Izvaddatu definīcija: nosaukums, apraksts un vērtība.
-# Izmantojot "AWS" iepriekšdefinētu funkciju "GetAtt" tiek iegūti nepieciešamā izvaddatu vērtība - resurss un tā atribūts. 
-# Nepieciešams izvadīt datubāzes beigupunkta mērķparametru, lai to varētu deklarēt aplikācijā un izveidot savienojumu ar datubāzi.
-# "GetAtt" funkcijas dokumentācija: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-join.html
+
+# Definēti izveidoto resursu izvaddati 
+#   1. DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkta vērtība
 Outputs:     
   DatabaseEndpoint: 
     Description: Database endpoint    

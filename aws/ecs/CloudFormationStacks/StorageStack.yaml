@@ -14,6 +14,9 @@ Metadata:
  
           
 # Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma ierobežojumi
+#   1. CodeCommitRepositoryName - CodeCommit repozitorija nosaukums
+#   2. CodeCommitRepositoryDescription - CodeCommit repozitorija apraksts
+#   3. EcrRepositoryName - ECR repozitorija nosaukums
 Parameters:
   CodeCommitRepositoryName:
     Type: String
@@ -32,9 +35,9 @@ Parameters:
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. CodeCommit repozitorijs - apraksts un nosaukums
-#   2. ECR repozitorijs - nosaukums
-#   3. S3 krātuve 
+#   1. CodeCommitRepository- CodeCommit repozitorija apraksts un nosaukums
+#   2. EcrRepository - ECR repozitorija nosaukums
+#   3. S3Bucket - S3 krātuves izveides deklarācija
 Resources:  
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
@@ -42,7 +45,7 @@ Resources:
       RepositoryDescription: !Ref CodeCommitRepositoryDescription
       RepositoryName: !Ref CodeCommitRepositoryName
   
-  ECRRepository:
+  EcrRepository:
     Type: AWS::ECR::Repository     
     Properties:       
       RepositoryName: !Ref EcrRepositoryName
@@ -52,9 +55,10 @@ Resources:
       
 
 # Definēti izveidoto resursu izvaddati un eksportētās vērtības
-#   1. CodeCommitRepositoryUrl 
-#   2. CodeCommitRepositoryName
-#   3. S3BucketName
+#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL vērtība un tās eksports
+#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukuma vērtība un tās eksports
+#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukuma vērtība un tās ekports
+#   4. S3BucketName - apraksts, S3 krātuves nosaukums un tās eksports
 Outputs:  
   CodeCommitRepositoryUrl:
     Description: CodeCommit repository URL
