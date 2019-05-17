@@ -1,0 +1,194 @@
+Description: "This stack creates ECS infrastructure: log group, cluster, service with application load balancer, task definition, container definition"
+
+
+# Tiek grupēta ievadparametru sekcija
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:             
+      - Label:
+          default: ECS configuration
+        Parameters: [ServiceName, ImageUri, TaskCount, ContainerPort, CpuUnits, Memory]
+
+      - Label:
+          default: Stack association with other CloudFormation stacks
+        Parameters: [IamRoleStack, NetworkStack, SecurityGroupStack]
+
+
+# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma, vērtību un struktūras ierobežojumi, atļautās vērtībās, ierobežojumu apraksts
+#   1. ContainerPort - konteinera ports
+#   2. TaskCount - uzdevumu jeb konteineru izpildījumu skaits
+#   3. CpuUnits - CPU vienību skaits
+#   4. Memory - RAM lielums
+#   5. ServiceName - ECS servisa nosaukums
+#   6. ImageUri - Docker imidža URI
+#   7. IamRoleStack, NetworkStack, SecurityGroupStack - drošības lomu, tīklošanas, drošības grupu steku nosaukumi
+Parameters:       
+  ContainerPort:    
+    Type: Number
+    Description: Container port to expose
+    MinValue: 0  
+
+  TaskCount:    
+    Type: Number
+    Description: Number of desired task count
+    MinValue: 0  
+
+  CpuUnits:
+    Type: Number  
+    Description: Number of CPU units used by the task      
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+
+  Memory:
+    Type: Number  
+    Description: The amount (in MiB) of memory used by the task     
+    AllowedValues: [512, 1024, 2048, 4096, 8192, 16384]  
+
+  ServiceName:    
+    Type: String
+    Description: Enter name of your ECS service 
+    MinLength: 1 
+
+  ImageUri:    
+    Type: String  
+    Description: Docker image URI    
+    MinLength: 1    
+
+  IamRoleStack:    
+    Type: String 
+    Description: Name of the IAM Role stack for export value usage
+    MinLength: 1  
+
+  NetworkStack:    
+    Type: String 
+    Description: Name of the network stack for export value usage
+    MinLength: 1 
+
+  SecurityGroupStack:    
+    Type: String 
+    Description: Name of the security group stack for export value usage
+    MinLength: 1  
+
+
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
+#   1. Database - piešķirtais krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, programmatūra, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
+#      liegta publiska piekļuve, kartējums uz drošības grupu un VPC apakštīklu vērtībām
+#   2. DatabaseSecurityGroup - drošības grupas nosaukums, apraksts, ienākošās datuplūsmas noteikumi un kartējums uz VPC vērtību
+Resources:    
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+  
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities: [FARGATE]
+      Cpu: !Ref CpuUnits
+      Memory: !Ref Memory 
+      ExecutionRoleArn: 
+        Fn::ImportValue: !Sub ${IamRoleStack}:EcsServiceRoleArn   
+      TaskRoleArn: 
+        Fn::ImportValue: !Sub ${IamRoleStack}:EcsServiceRoleArn      
+      Family: !Sub ${AWS::StackName}-Task-Definition       
+      NetworkMode: awsvpc  
+      ContainerDefinitions:
+        - Name: !Sub ${ServiceName}-container
+          Image: !Ref ImageUri
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: http
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Sub awslogs-${ServiceName}-service        
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer      
+    Properties:      
+      Scheme: internet-facing    
+      SecurityGroups: 
+        - Fn::ImportValue: !Sub ${SecurityGroupStack}:AlbSecurityGroupId        
+      Subnets: 
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1Id
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2Id 
+
+  TargetGroup:
+    DependsOn: ApplicationLoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:   
+      Name: !Sub ${AWS::StackName}-TargetGroup  
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      HealthCheckProtocol: HTTP
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
+      TargetType: ip
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener    
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+  
+  EcsService:
+    Type: AWS::ECS::Service    
+    DependsOn: TargetGroup
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: !Ref TaskCount
+      LaunchType: FARGATE
+      DeploymentConfiguration:        
+        MinimumHealthyPercent: 100         
+        MaximumPercent: 200 
+      LoadBalancers:
+        - ContainerName: !Sub ${ServiceName}-container
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: 
+            - Fn::ImportValue: !Sub ${SecurityGroupStack}:VpcTrafficSecurityGroupId          
+          Subnets: 
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet1Id
+            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet2Id                          
+      TaskDefinition: !Ref TaskDefinition   
+
+
+Outputs: 
+  EcsClusterId:
+    Description: The ECS Cluster ID 
+    Value: !Ref EcsCluster
+    Export:
+      Name: !Sub ${AWS::StackName}:EcsClusterId
+
+  EcsServiceArn:
+    Description: The ECS service ARN 
+    Value: !Ref EcsService
+    Export:
+      Name: !Sub ${AWS::StackName}:EcsServiceArn 
+
+  EcsTaskName:
+    Description: The ECS task name
+    Value: !Sub ${ServiceName}-container
+    Export:
+      Name: !Sub ${AWS::StackName}:EcsTaskName
+
+  AlbUrl:
+    Description: The DNS for the application load balancer
+    Value: !Sub http://${ApplicationLoadBalancer.DNSName}
+
+
+      

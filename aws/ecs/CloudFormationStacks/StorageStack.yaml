@@ -74,7 +74,7 @@ Outputs:
 
   EcrRepositoryName:
     Description: ECR repository name
-    Value: !Sub ${EcrRepositoryName}   
+    Value: !Ref EcrRepositoryName 
     Export: 
       Name: !Sub ${AWS::StackName}:EcrRepositoryName
 

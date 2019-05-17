@@ -2,26 +2,18 @@ Description: This stack creates CodePipeline to build an ECS Fargate service fro
 
 
 Metadata:
-  # Parametri tiek grupēti un kārtoti AWS CloudFormation konsolē.
   AWS::CloudFormation::Interface:
-    # Saraksts ar parametru grupām.
     ParameterGroups:
-        # Paramteru grupas nosaukums.
       - Label:
           default: Pipeline configuration 
-        # Paramteri un to parādīšanas kārtība konsolē.
         Parameters: [SourceRepository, ArtifactS3Bucket, SourceRepositoryBranch]      
       
       - Label:
           default: Pipeline associations with other CloudFormation stacks
-        Parameters: [IamRoleStack, FargateStack, StorageStack]
+        Parameters: [IamRoleStack, StorageStack, ComputeStackTest, ComputeStackProd]
+
 
 Parameters:       
-  FargateStack:
-    Description: 'Enter the name of your Fargate resource stack. Used exports: FargateServiceArn, FargateClusterArn'
-    Type: String
-    MinLength: 1     
-
   SourceRepository:
     Description: CodeCommit repository name
     Type: String
@@ -31,7 +23,6 @@ Parameters:
     Description: The S3 bucket for deploy artifact
     Type: String
     MinLength: 1 
-    Default: storagestack-s3bucket-cl1ju7makf6p # remove this later
     
   SourceRepositoryBranch:
     Description: CodeCommit repository branch name which to use in pipeline
@@ -41,17 +32,22 @@ Parameters:
   IamRoleStack:
     Description: IAM stack name 
     Type: String
-    MinLength: 1  
-
-  FargateStack:
-    Description: Fargate stack name 
-    Type: String
-    MinLength: 1  
+    MinLength: 1   
 
   StorageStack:
     Description: Storage stack name 
     Type: String
     MinLength: 1  
+
+  ComputeStackTest:
+    Description: Test compute stack name
+    Type: String
+    MinLength: 1  
+
+  ComputeStackProd:
+    Description: Production compute stack name
+    Type: String
+    MinLength: 1     
     
 
 Resources:  
@@ -60,9 +56,9 @@ Resources:
     Properties:
       Name: !Sub CodeBuildProject-${AWS::StackName}-${SourceRepositoryBranch}    
       ServiceRole: 
-        Fn::ImportValue: !Sub ${IamRoleStack}:CodeBuildRoleArn              
+        Fn::ImportValue: !Sub ${IamRoleStack}:CodePipelineRoleArn              
       Artifacts:
-        Type: no_artifacts
+        Type: CODEPIPELINE
       Environment:        
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -82,14 +78,11 @@ Resources:
           - Name: TASK_NAME
             Type: PLAINTEXT
             Value: 
-              Fn::ImportValue: !Sub ${FargateStack}:FargateServiceName                  
+              Fn::ImportValue: !Sub ${ComputeStackTest}:EcsTaskName                  
       Source:        
-        Type: CODECOMMIT
-        Location: 
-          Fn::ImportValue: !Sub ${StorageStack}:CodeCommitRepositoryUrl          
-      TimeoutInMinutes: 60          
+        Type: CODEPIPELINE         
   
-  AppPipeline:
+  CodePipeline:
     Type: AWS::CodePipeline::Pipeline    
     Properties:
       Name: !Sub CodePipeline-${AWS::StackName}-${SourceRepositoryBranch} 
@@ -139,35 +132,37 @@ Resources:
                 Provider: ECS
               Configuration:
                 ClusterName: 
-                  Fn::ImportValue: !Sub ${FargateStack}:FargateCluster                   
+                  Fn::ImportValue: !Sub ${ComputeStackTest}:EcsClusterId                   
                 ServiceName: 
-                  Fn::ImportValue: !Sub ${FargateStack}:FargateServiceArn                                
+                  Fn::ImportValue: !Sub ${ComputeStackTest}:EcsServiceArn                                
                 FileName: imagedefinitions.json 
               RunOrder: 3
-        # - Name: PRODApproval
-        #   Actions:
-        #     - Name: ApprovalAction
-        #       ActionTypeId:
-        #         Category: Approval
-        #         Owner: AWS
-        #         Version: 1
-        #         Provider: Manual
-        #       RunOrder: 4
-        # - Name: DeployProd
-        #   Actions:
-        #     - Name: DeployAction
-        #       InputArtifacts:                
-        #         - Name: BuildArtifact
-        #       ActionTypeId:
-        #         Category: Deploy
-        #         Owner: AWS
-        #         Version: 1
-        #         Provider: ECS
-        #       Configuration:
-        #         ClusterName: FargateStackProd	                   
-        #         ServiceName: arn:aws:ecs:us-east-1:035868780374:service/FargateStackProd-FargateService-1O3ZSIU6JOMHC                             
-        #         FileName: imagedefinitions.json 
-        #       RunOrder: 5
+        - Name: ProdApproval
+          Actions:
+            - Name: ApprovalAction
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              RunOrder: 4
+        - Name: DeployProd
+          Actions:
+            - Name: DeployAction
+              InputArtifacts:                
+                - Name: BuildArtifact
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: ECS
+              Configuration:
+                ClusterName: 
+                  Fn::ImportValue: !Sub ${ComputeStackProd}:EcsClusterId                   
+                ServiceName: 
+                  Fn::ImportValue: !Sub ${ComputeStackProd}:EcsServiceArn                         
+                FileName: imagedefinitions.json 
+              RunOrder: 5
       ArtifactStore:
         Type: S3
         Location: !Ref ArtifactS3Bucket 

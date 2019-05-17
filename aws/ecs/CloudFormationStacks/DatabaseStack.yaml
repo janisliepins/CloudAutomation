@@ -1,5 +1,4 @@
-Description: This template creates RDS instance with installed MySQL database and security group
-
+Description: This template creates RDS instance with installed MySQL database 
 
 # Tiek grupēta ievadparametru sekcija
 Metadata:
@@ -7,56 +6,72 @@ Metadata:
     ParameterGroups:
       - Label:
           default: RDS instance MySQL database properties 
-        Parameters:          
-          - DatabaseName
-          - DatabaseUser
-          - DatabasePassword 
+        Parameters: 
+          - DbAllocatedStorage
+          - DbClass
+          - DbName
+          - DbUser
+          - DbPassword 
 
       - Label:
-          default: RDS instance associations with other CloudFormation stacks
+          default: Stack associations with CloudFormation stacks
         Parameters:          
           - NetworkStack
+          - SecurityGroupStack
 
 
-# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma un struktūras ierobežojumi
-#   1. StorageSize - datubāzes izmērs
-#   2. NetworkStack - tīkla steka nosaukums
-#   3. DatabaseName - datubāzes nosaukums
-#   4. DatabaseUser - datubāzes lietotājvārds
-#   5. DatabasePassword - datubāzes lietotāja parole
+# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma, vērtību un struktūras ierobežojumi, atļautās vērtībās, ierobežojumu apraksts
+#   1. DbAllocatedStorage - datubāzes izmērs
+#   2. DbClass - RDS instances tips
+#   3. DbName - datubāzes nosaukums
+#   4. DbUser - datubāzes lietotājvārds
+#   5. DbPassword - datubāzes lietotāja parole
+#   6. NetworkStack - tīkla steka nosaukums
 Parameters:   
-  StorageSize:        
-    Type: String
-    MinLength: 1
-    MaxLength: 3
-    Description: Enter the size of the storage (GB) 
+  DbAllocatedStorage:        
+    Type: Number    
+    Description: Enter the size of the database (GB) 
+    MinValue: 5    
+    ConstraintDescription : Must be at least 5 GB 
 
-  NetworkStack:        
-    Type: String
-    MinLength: 1
-    Description: Enter the name of your network stack that you want to associate with your DB instance.
+  DbClass:  
+    Type: String   
+    Description: Database instance class    
+    AllowedValues: [db.t2.xlarge, db.t2.2xlarge]
+    ConstraintDescription: Must select a valid General purpose T2 database instance type      
 
-  DatabaseName:
-    Type: String
+  DbName:
+    Type: String    
     MinLength: 1
-    MaxLength: 30 
-    AllowedPattern: "[a-zA-Z0-9]*" 
-    ConstraintDescription: Must contain only alphanumeric characters.
-
-  DatabaseUser: 
-    Type: String
-    MinLength: 1
-    MaxLength: 16
-    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
-    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters.
-
-  DatabasePassword: 
-    NoEcho: true
-    Type: String
-    MinLength: 1
-    MaxLength: 16
+    MaxLength: 64
+    Description: Enter database name
     AllowedPattern: "[a-zA-Z0-9]*"
-    ConstraintDescription: Must contain only alphanumeric characters
+    ConstraintDescription: Must contain only alphanumeric characters    
+
+  DbUser: 
+    Type: String    
+    MinLength: 1
+    MaxLength: 16
+    Description: Enter database username
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
+
+  DbPassword: 
+    NoEcho: true
+    Type: String    
+    MinLength: 8
+    MaxLength: 41
+    Description: Enter database password    
+  
+  NetworkStack:        
+    Type: String    
+    MinLength: 1
+    Description: Name of the network stack for export value usage
+
+  SecurityGroupStack:        
+    Type: String    
+    MinLength: 1
+    Description: Name of the security group stack for export value usage
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
@@ -67,31 +82,18 @@ Resources:
   Database: 
     Type: AWS::RDS::DBInstance 
     Properties: 
-      AllocatedStorage: !Ref StorageSize 
-      DBInstanceClass: db.t2.micro     
-      DBName: !Ref DatabaseName       
+      AllocatedStorage: !Ref DbAllocatedStorage 
+      DBInstanceClass: !Ref DbClass    
+      DBName: !Ref DbName       
       Engine: MySQL 
-      MasterUsername: !Ref DatabaseUser
-      MasterUserPassword: !Ref DatabasePassword
+      MasterUsername: !Ref DbUser
+      MasterUserPassword: !Ref DbPassword
       MultiAZ: true
       PubliclyAccessible: false           
-      VPCSecurityGroups: [!Ref DatabaseSecurityGroup]     
+      VPCSecurityGroups: 
+        - Fn::ImportValue: !Sub ${SecurityGroupStack}:VpcTrafficSecurityGroupId
       DBSubnetGroupName: 
-        Fn::ImportValue: !Sub ${NetworkStack}:DBSubnetGroup
-     
-  DatabaseSecurityGroup: 
-    Type: AWS::EC2::SecurityGroup 
-    Properties:     
-      GroupName: !Sub ${AWS::StackName} RDS Security Group 
-      GroupDescription: 
-        Fn::ImportValue: !Sub ${AWS::StackName} RDS Security Group, Allow traffic from within VPC ${NetworkStack}:VpcCidrBlock  
-      SecurityGroupIngress:
-        - CidrIp: 
-            Fn::ImportValue: !Sub ${NetworkStack}:VpcCidrBlock
-          IpProtocol: -1      
-      VpcId: 
-        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
-
+        Fn::ImportValue: !Sub ${NetworkStack}:RdsSubnetGroupId
 
 # Definēti izveidoto resursu izvaddati 
 #   1. DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkta vērtība
