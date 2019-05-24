@@ -70,9 +70,12 @@ Parameters:
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. Database - piešķirtais krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, programmatūra, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
-#      liegta publiska piekļuve, kartējums uz drošības grupu un VPC apakštīklu vērtībām
-#   2. DatabaseSecurityGroup - drošības grupas nosaukums, apraksts, ienākošās datuplūsmas noteikumi un kartējums uz VPC vērtību
+#   1. EcsCluster - ECS klāsteris ar identisku nosaukumu kā stekam
+#   2. LogGroup - žurnālu grupa
+#   3. ApplicationLoadBalancer - ALB resursa īpašības: publiski pieejams DNS, piesaistne ar ALB drošības grupu un izvietojums divos publiskos apakštīklos
+#   4. TargetGroup - ALB resursa mērķa grupas īpašības: izvietojums VPC tīklā, konteineru ports, atbalstāmais pieprasījumu protokols, status pārbaudes īpašības - intervāli, protokols
+#   5. Listener - ALB uztvērēja īpašības: mērķa grupa, pāradresācija, ports un protokols
+
 Resources:    
   EcsCluster:
     Type: AWS::ECS::Cluster
@@ -81,6 +84,40 @@ Resources:
 
   LogGroup:
     Type: AWS::Logs::LogGroup
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer      
+    Properties:      
+      Scheme: internet-facing    
+      SecurityGroups: 
+        - Fn::ImportValue: !Sub ${SecurityGroupStack}:AlbSecurityGroupId        
+      Subnets: 
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1Id
+        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2Id 
+
+  TargetGroup:    
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:   
+      Name: !Sub ${AWS::StackName}-TargetGroup  
+      HealthCheckIntervalSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      HealthCheckProtocol: HTTP
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
+      TargetType: ip
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener    
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
   
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -107,44 +144,9 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: !Sub awslogs-${ServiceName}-service        
 
-  ApplicationLoadBalancer:
-    Type: AWS::ElasticLoadBalancingV2::LoadBalancer      
-    Properties:      
-      Scheme: internet-facing    
-      SecurityGroups: 
-        - Fn::ImportValue: !Sub ${SecurityGroupStack}:AlbSecurityGroupId        
-      Subnets: 
-        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1Id
-        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2Id 
-
-  TargetGroup:
-    DependsOn: ApplicationLoadBalancer
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:   
-      Name: !Sub ${AWS::StackName}-TargetGroup  
-      HealthCheckIntervalSeconds: 10
-      HealthyThresholdCount: 3
-      UnhealthyThresholdCount: 3
-      HealthCheckProtocol: HTTP
-      Port: !Ref ContainerPort
-      Protocol: HTTP
-      VpcId: 
-        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
-      TargetType: ip
-
-  Listener:
-    Type: AWS::ElasticLoadBalancingV2::Listener    
-    Properties:
-      DefaultActions:
-        - TargetGroupArn: !Ref TargetGroup
-          Type: forward
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
-  
   EcsService:
-    Type: AWS::ECS::Service    
-    DependsOn: TargetGroup
+    Type: AWS::ECS::Service 
+    DependsOn: [ApplicationLoadBalancer, TargetGroup, Listener]     
     Properties:
       Cluster: !Ref EcsCluster
       DesiredCount: !Ref TaskCount

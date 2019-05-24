@@ -1,7 +1,8 @@
+# Veidnes apraksts
 Description: This template creates two security groups for application load balancers and traffic within VPC 
 
 
-# Tiek grupēta ievadparametru sekcija
+# Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:

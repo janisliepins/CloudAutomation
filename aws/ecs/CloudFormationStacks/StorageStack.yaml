@@ -1,34 +1,35 @@
+# Veidnes apraksts
 Description: This template creates CodeCommit, ECR repositories and S3 bucket
 
 
-# Tiek grupēta ievadparametru sekcija
+# Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
           default: Storage resources 
         Parameters:          
-          - CodeCommitRepositoryName
-          - CodeCommitRepositoryDescription
-          - EcrRepositoryName    
+          - CodeCommitRepoName
+          - CodeCommitRepoDescr
+          - EcrRepoName    
  
           
 # Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma ierobežojumi
-#   1. CodeCommitRepositoryName - CodeCommit repozitorija nosaukums
-#   2. CodeCommitRepositoryDescription - CodeCommit repozitorija apraksts
-#   3. EcrRepositoryName - ECR repozitorija nosaukums
+#   1. CodeCommitRepoName - CodeCommit repozitorija nosaukums
+#   2. CodeCommitRepoDescription - CodeCommit repozitorija apraksts
+#   3. EcrRepoName - ECR repozitorija nosaukums
 Parameters:
-  CodeCommitRepositoryName:
+  CodeCommitRepoName:
     Type: String
     Description: Name of your CodeCommit repository    
     MinLength: 1  
 
-  CodeCommitRepositoryDescription:
+  CodeCommitRepoDescr:
     Type: String
     Description: Description of your CodeCommit repository    
     MinLength: 1    
 
-  EcrRepositoryName:
+  EcrRepoName:
     Type: String   
     Description: Name of your ECR repository    
     MinLength: 1   
@@ -42,26 +43,26 @@ Resources:
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
     Properties: 
-      RepositoryDescription: !Ref CodeCommitRepositoryDescription
-      RepositoryName: !Ref CodeCommitRepositoryName
+      RepositoryDescription: !Ref CodeCommitRepoDescr
+      RepositoryName: !Ref CodeCommitRepoName
   
   EcrRepository:
-    Type: AWS::ECR::Repository     
+    Type: AWS::ECR::Repository    
     Properties:       
-      RepositoryName: !Ref EcrRepositoryName
+      RepositoryName: !Ref EcrRepoName
 
   S3Bucket:
     Type: AWS::S3::Bucket
       
 
 # Definēti izveidoto resursu izvaddati un eksportētās vērtības
-#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL vērtība un tās eksports
-#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukuma vērtība un tās eksports
-#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukuma vērtība un tās ekports
-#   4. S3BucketName - apraksts, S3 krātuves nosaukums un tās eksports
+#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu CodeCommitRepositoryUrl), eksportvērtības nosaukums
+#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukums (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Name), eksportvērtības nosaukums
+#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukums (izgūts ar Ref funckiju atsaucoties uz veidnes ievadparamtetra EcrRepoName vērtību), eksportvērtības nosaukums
+#   4. S3BucketName - apraksts, S3 krātuves nosaukums (izgūts ar Ref funckiju atsaucoties uz resursa ID), eksportvērtības nosaukums
 Outputs:  
   CodeCommitRepositoryUrl:
-    Description: CodeCommit repository URL
+    Description: CodeCommit repository clone URL
     Value: !GetAtt CodeCommitRepository.CloneUrlHttp   
     Export: 
       Name: !Sub ${AWS::StackName}:CodeCommitRepositoryUrl
@@ -74,7 +75,7 @@ Outputs:
 
   EcrRepositoryName:
     Description: ECR repository name
-    Value: !Ref EcrRepositoryName 
+    Value: !Ref EcrRepoName 
     Export: 
       Name: !Sub ${AWS::StackName}:EcrRepositoryName
 

@@ -1,3 +1,4 @@
+# Veidnes apraksts
 Description: This template creates RDS instance with installed MySQL database 
 
 # Tiek grupēta ievadparametru sekcija
@@ -25,8 +26,10 @@ Metadata:
 #   2. DbClass - RDS instances tips
 #   3. DbName - datubāzes nosaukums
 #   4. DbUser - datubāzes lietotājvārds
-#   5. DbPassword - datubāzes lietotāja parole
-#   6. NetworkStack - tīkla steka nosaukums
+#   5. DbPassword - datubāzes lietotāja parole, ievadvērtība tiek slēpta
+#   6. MultiAz - datubāzes lietotāja parole, ievadvērtība tiek slēpta
+#   7. NetworkStack - tīkla steka nosaukums
+#   8. SecurityGroupStack - drošības grupu steka nosaukums
 Parameters:   
   DbAllocatedStorage:        
     Type: Number    
@@ -61,7 +64,12 @@ Parameters:
     Type: String    
     MinLength: 8
     MaxLength: 41
-    Description: Enter database password    
+    Description: Enter database password  
+
+  MultiAzDeployment:    
+    Type: String    
+    AllowedValues: [true, false]  
+    Description: Enable Multi AZ deployment for RDS?
   
   NetworkStack:        
     Type: String    
@@ -75,9 +83,8 @@ Parameters:
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. Database - piešķirtais krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, programmatūra, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
-#      liegta publiska piekļuve, kartējums uz drošības grupu un VPC apakštīklu vērtībām
-#   2. DatabaseSecurityGroup - drošības grupas nosaukums, apraksts, ienākošās datuplūsmas noteikumi un kartējums uz VPC vērtību
+#   1. Database - izmantojot Ref funkciju piešķirts krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
+#      izmantojot Sub funkciju, iegūtas ievadparametru vērtības un izgūtas tīklošanas un drošības grupu steku izvaddatu vērtības, liegta publiska piekļuve, 
 Resources: 
   Database: 
     Type: AWS::RDS::DBInstance 
@@ -88,7 +95,7 @@ Resources:
       Engine: MySQL 
       MasterUsername: !Ref DbUser
       MasterUserPassword: !Ref DbPassword
-      MultiAZ: true
+      MultiAZ: !Ref MultiAzDeployment
       PubliclyAccessible: false           
       VPCSecurityGroups: 
         - Fn::ImportValue: !Sub ${SecurityGroupStack}:VpcTrafficSecurityGroupId
@@ -96,7 +103,7 @@ Resources:
         Fn::ImportValue: !Sub ${NetworkStack}:RdsSubnetGroupId
 
 # Definēti izveidoto resursu izvaddati 
-#   1. DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkta vērtība
+#   1. DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkts (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtiem Endpoint un Address)
 Outputs:     
   DatabaseEndpoint: 
     Description: Database endpoint    

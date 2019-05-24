@@ -1,8 +1,10 @@
-Description: This stack deploys ECS Service and Codepipeline roles
+# Veidnes apraksts
+Description: This stack creates ECS service and Codepipeline roles
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-# EcsServiceRole, EcsTaskRole, CodeBuildRole, CodePipelineRole - ECS servisa, uzdevuma, CodeBuild un CodePipeline lomas un attiecīgās piekļuves politikas dokumenti 
+#   1. ECS pakalpojuma loma un piekļuves dokuments (nosaukums definēts ar Sub funckiju atsaucoties uz steka nosaukumu)
+#   2. CodePipeline pakalpojuma loma un piekļuves dokuments (nosaukums definēts ar Sub funckiju atsaucoties uz steka nosaukumu)
 Resources:  
   EcsServiceRole:
     Type: AWS::IAM::Role
@@ -33,7 +35,7 @@ Resources:
           - Action: sts:AssumeRole
             Effect: Allow        
             Principal:
-              Service: [codebuild.amazonaws.com, codepipeline.amazonaws.com, codedeploy.amazonaws.com]     
+              Service: [codebuild.amazonaws.com, codepipeline.amazonaws.com]     
       Policies:
         - PolicyName: !Sub ${AWS::StackName}-CodePipelineRolePolicy
           PolicyDocument:            
@@ -52,10 +54,8 @@ Resources:
 
 
 # Definēti izveidoto resursu izvaddati un eksporta vērtības
-#   1. EcsServiceRoleArn - apraksts, ECS servisa lomas resursa ARN vērtība un tās eksports
-#   2. EcsTaskRoleArn - apraksts, ECS uzdevuma lomas resursa ARN vērtība un tās eksports
-#   3. CodeBuildRoleArn - apraksts, CodeBuild lomas resursa ARN vērtība un tās eksports
-#   4. CodePipelineRoleArn - apraksts, CodePipelineRoleArn lomas resursa ARN vērtība un tās eksports
+#   1. EcsServiceRoleArn - apraksts, ECS servisa lomas resursa ARN (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Arn), eksportvērtības nosaukums
+#   2. CodePipelineRoleArn - apraksts, CodePipeline lomas resursa (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Arn), eksportvērtības nosaukums
 Outputs: 
   EcsServiceRoleArn:
     Description: ECS Service IAM role Amazon Resource Name

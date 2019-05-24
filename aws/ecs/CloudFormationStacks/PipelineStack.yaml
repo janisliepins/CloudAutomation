@@ -62,7 +62,7 @@ Resources:
       Environment:        
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/java:openjdk-9        
+        Image: aws/codebuild/java:openjdk-8  
         PrivilegedMode: true 
         EnvironmentVariables:          
           - Name: ACCOUNT_ID
@@ -71,10 +71,7 @@ Resources:
           - Name: IMAGE_REPOSITORY
             Type: PLAINTEXT
             Value: 
-              Fn::ImportValue: !Sub ${StorageStack}:EcrRepositoryName   
-          - Name: BRANCH_NAME
-            Type: PLAINTEXT
-            Value: !Ref SourceRepositoryBranch
+              Fn::ImportValue: !Sub ${StorageStack}:EcrRepositoryName          
           - Name: TASK_NAME
             Type: PLAINTEXT
             Value: 
@@ -89,42 +86,39 @@ Resources:
       RoleArn:    
         Fn::ImportValue: !Sub ${IamRoleStack}:CodePipelineRoleArn         
       Stages:       
-        - Name: Source
+        - Name: Source_Checkout
           Actions:
-            - Name: SourceAction
+            - Name: SourceCheckoutAction
+              OutputArtifacts:                
+                - Name: SourceArtifact
               ActionTypeId:
                 Category: Source
                 Owner: AWS
                 Version: 1               
-                Provider: CodeCommit
-              OutputArtifacts:                
-                - Name: SourceArtifact
+                Provider: CodeCommit              
               Configuration:                
                 BranchName: !Ref SourceRepositoryBranch
                 RepositoryName: !Ref SourceRepository              
-                PollForSourceChanges: true
-              RunOrder: 1        
-        - Name: Build
+        - Name: Application_Build
           Actions:
-            - Name: BuildAction             
+            - Name: ApplicationBuildAction                           
               InputArtifacts:
                 - Name: SourceArtifact
+              OutputArtifacts:                
+                - Name: BuildArtifact
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Version: 1
-                Provider: CodeBuild
-              OutputArtifacts:                
-                - Name: BuildArtifact
+                Provider: CodeBuild              
               Configuration:                
                 ProjectName: !Ref CodeBuildProject
                 PrimarySource: SourceArtifact
-              RunOrder: 2      
-        - Name: DeployTest
+        - Name: Test_Cluster_Deployment
           Actions:
-            - Name: DeployAction
+            - Name: DeployAction   
               InputArtifacts:                
-                - Name: BuildArtifact
+                - Name: BuildArtifact           
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -135,9 +129,8 @@ Resources:
                   Fn::ImportValue: !Sub ${ComputeStackTest}:EcsClusterId                   
                 ServiceName: 
                   Fn::ImportValue: !Sub ${ComputeStackTest}:EcsServiceArn                                
-                FileName: imagedefinitions.json 
-              RunOrder: 3
-        - Name: ProdApproval
+                FileName: imagedefinitions.json               
+        - Name: Production_Deployment_Approval
           Actions:
             - Name: ApprovalAction
               ActionTypeId:
@@ -145,12 +138,11 @@ Resources:
                 Owner: AWS
                 Version: 1
                 Provider: Manual
-              RunOrder: 4
-        - Name: DeployProd
+        - Name: Production_Cluster_Deployment
           Actions:
             - Name: DeployAction
               InputArtifacts:                
-                - Name: BuildArtifact
+                - Name: BuildArtifact              
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -162,7 +154,6 @@ Resources:
                 ServiceName: 
                   Fn::ImportValue: !Sub ${ComputeStackProd}:EcsServiceArn                         
                 FileName: imagedefinitions.json 
-              RunOrder: 5
       ArtifactStore:
         Type: S3
         Location: !Ref ArtifactS3Bucket 
