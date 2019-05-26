@@ -10,7 +10,7 @@
 ![Arhitektūra](https://github.com/janisliepins/CloudAutomation/blob/master/aws/ecs/CloudFormationArchitecture/storage_stack.png)
 
 
-2. Izveido IAM lomas ar pielāgotiem noteikumu dokumentiem: "IamRoleStack.yaml" - tiks izveidotas ECS Service, ECS Task, CodeBuild, CodePipeline lomas
+2. Izveido IAM lomas ar pielāgotiem noteikumu dokumentiem: "SecurityRoleStack.yaml" - tiks izveidotas ECS Service, ECS Task, CodeBuild, CodePipeline lomas
 ![Arhitektūra](https://github.com/janisliepins/CloudAutomation/blob/master/aws/ecs/CloudFormationArchitecture/iamrole_stack.png)
 
 
@@ -18,10 +18,10 @@
 ![Arhitektūra](https://github.com/janisliepins/CloudAutomation/blob/master/aws/ecs/CloudFormationArchitecture/network_stack.png)
 
 
-4. Izveido RDS instanci ar MySQL datubāzi: "IamRoleStack.yaml" 
+4. Izveido RDS instanci ar MySQL datubāzi: "DatabaseStack.yaml" 
 
 
-5. Izveido CloudWatch, ECS Fargate un EC2 resursus: "FargateStack.yaml" - tiks izveidots ECS klāsteris, serviss ar Fargate izpildes tipu un konteineri. Papildus tiks izveidota CloudWatch žurnāla grupa un EC2 resursi: aplikāciju slodzes līdzsvarotājs, mērķa grupa un 2 drošības grupas konteineriem un aplikāciju slodzes līdzsvarotājam
+5. Izveido CloudWatch, ECS Fargate un EC2 resursus: "ComputeStack.yaml" - tiks izveidots ECS klāsteris, serviss ar Fargate izpildes tipu un konteineri. Papildus tiks izveidota CloudWatch žurnāla grupa un EC2 resursi: aplikāciju slodzes līdzsvarotājs, mērķa grupa un 2 drošības grupas konteineriem un aplikāciju slodzes līdzsvarotājam
 
 
 

@@ -12,9 +12,9 @@ Metadata:
           - AlbInboundCidr
 
       - Label:
-          default: Stack associations with CloudFormation network stack
+          default: Cross-stack reference
         Parameters:          
-          - NetworkStack
+          - NetworkStackName
 
 
 # Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma un struktūras ierobežojumi
@@ -23,20 +23,20 @@ Metadata:
 Parameters:
   AlbInboundCidr:
     Type: String
-    Description: "ALB Security Group inbound IP address space, RFC 1918 address space only. Example: 0.0.0.0/0 for public access"
+    Description: Authorize inbound traffic CIDR range (e.g. 0.0.0.0/0 for public access)
     MaxLength: 18
     MinLength: 9     
-    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
-    ConstraintDescription: Valid CIDR Block Required           
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x      
 
-  NetworkStack:        
+  NetworkStackName:        
     Type: String
     Description: Name of the network stack for export value usage
     MinLength: 1
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   VpcSecurityGroup, PublicSecurityGroup - drošības grupas nosaukums, apraksts, ienākošās datuplūsmas noteikumi un kartējums uz VPC vērtību
+#   1.,2. VpcSecurityGroup, AlbSecurityGroup - drošības grupas nosaukums, apraksts, izvietojums VPC, ienākošās datuplūsmas noteikumi 
 Resources:
   VpcTrafficSecurityGroup: 
     Type: AWS::EC2::SecurityGroup 
@@ -44,11 +44,11 @@ Resources:
       GroupName: !Sub ${AWS::StackName}:VpcTrafficSecurityGroup 
       GroupDescription: Allow traffic from within VPC 
       VpcId: 
-        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
+        Fn::ImportValue: !Sub ${NetworkStackName}:VpcId
       SecurityGroupIngress:
         - IpProtocol: -1     
           CidrIp: 
-            Fn::ImportValue: !Sub ${NetworkStack}:VpcCidrBlock
+            Fn::ImportValue: !Sub ${NetworkStackName}:VpcCidrBlock
            
   AlbSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -56,7 +56,7 @@ Resources:
       GroupName: !Sub ${AWS::StackName}:AlbSecurityGroup
       GroupDescription: Allow traffic to the application load balancer 
       VpcId: 
-        Fn::ImportValue: !Sub ${NetworkStack}:VpcId    
+        Fn::ImportValue: !Sub ${NetworkStackName}:VpcId    
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -65,8 +65,8 @@ Resources:
 
 
 # Definēti izveidoto resursu izvaddati un eksporta vērtības
-#   1. VpcTrafficSecurityGroup - apraksts, VPC datuplūsmas drošības grupas resursa ID vērtība un tās eksports
-#   2. AlbSecurityGroup - apraksts, ALB resursa drošības grupas resursa ID vērtība un tās eksports
+#   1. VpcTrafficSecurityGroup - apraksts, VPC datuplūsmas drošības grupas resursa ID vērtība, eksportvērtības nosaukums 
+#   2. AlbSecurityGroup - apraksts, ALB resursa drošības grupas resursa ID vērtība, eksportvērtības nosaukums 
 Outputs:  
   VpcTrafficSecurityGroupId:
     Description: VPC traffic security grup ID

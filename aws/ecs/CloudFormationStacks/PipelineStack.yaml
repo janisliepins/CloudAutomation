@@ -1,64 +1,75 @@
+# Veidnes apraksts
 Description: This stack creates CodePipeline to build an ECS Fargate service from given CodeCommit repository and branch
 
 
+# Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Pipeline configuration 
-        Parameters: [SourceRepository, ArtifactS3Bucket, SourceRepositoryBranch]      
+          default: Pipeline properties 
+        Parameters: [CodeCommitRepoName, CodeCommitRepoBranchName, S3BucketName]      
       
       - Label:
-          default: Pipeline associations with other CloudFormation stacks
-        Parameters: [IamRoleStack, StorageStack, ComputeStackTest, ComputeStackProd]
+          default: Cross-stack reference
+        Parameters: [SecurityRoleStackName, StorageStackName, ComputeStackTestName, ComputeStackProdName]
 
 
+# Definētas ievadparamteru īpašības - tips, apraksts, minimālais simbolu daudzums
+#   1. CodeCommitRepository - CodeCommit repozitorija nosaukums
+#   2. CodeCommitRepoBranchName - CodeCommit repozitorija zara nosaukums
+#   3. S3BucketName - S3 krātuves nosaukums
+#   4. SecurityRoleStackName - drošības lomu steka nosaukums
+#   5. StorageStackName - krātuvju steka nosaukums
+#   6., 7. ComputeStackTestName, ComputeStackProdName - testa un produkcijas skaitļošanas steku nosaukumi
 Parameters:       
-  SourceRepository:
-    Description: CodeCommit repository name
+  CodeCommitRepoName:
     Type: String
+    Description: CodeCommit repository name 
     MinLength: 1  
 
-  ArtifactS3Bucket:
-    Description: The S3 bucket for deploy artifact
-    Type: String
-    MinLength: 1 
-    
-  SourceRepositoryBranch:
+  CodeCommitRepoBranchName:
     Description: CodeCommit repository branch name which to use in pipeline
-    Type: String
-    MinLength: 1      
-
-  IamRoleStack:
-    Description: IAM stack name 
     Type: String
     MinLength: 1   
 
-  StorageStack:
+  S3BucketName:
+    Type: String
+    Description: The S3 bucket for artifact storage
+    MinLength: 1      
+
+  SecurityRoleStackName:
+    Type: String
+    Description: IAM stack name 
+    MinLength: 1   
+
+  StorageStackName:
+    Type: String
     Description: Storage stack name 
-    Type: String
     MinLength: 1  
 
-  ComputeStackTest:
-    Description: Test compute stack name
+  ComputeStackTestName:    
     Type: String
+    Description: Test compute stack name 
     MinLength: 1  
 
-  ComputeStackProd:
+  ComputeStackProdName:    
+    Type: String
     Description: Production compute stack name
-    Type: String
     MinLength: 1     
     
 
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni
+#   1. CodeBuildProject - CodeBuild projekts, nosaukums, izmantotā IAM loma, artefaktu uzglabāšanas konfigurācija un projekta izguves vieta
+#   2. CodePipelineProject - CodePipeline projekts, nosaukums, izmantotā IAM loma, posmu definīcijas
+#   3. ArtifactStore - artefaktu uzglabāšanas vieta
 Resources:  
   CodeBuildProject:
     Type: AWS::CodeBuild::Project   
     Properties:
-      Name: !Sub CodeBuildProject-${AWS::StackName}-${SourceRepositoryBranch}    
+      Name: !Sub CodeBuildProject-${AWS::StackName}-${CodeCommitRepoBranchName}    
       ServiceRole: 
-        Fn::ImportValue: !Sub ${IamRoleStack}:CodePipelineRoleArn              
-      Artifacts:
-        Type: CODEPIPELINE
+        Fn::ImportValue: !Sub ${SecurityRoleStackName}:CodePipelineRoleArn      
       Environment:        
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -71,20 +82,24 @@ Resources:
           - Name: IMAGE_REPOSITORY
             Type: PLAINTEXT
             Value: 
-              Fn::ImportValue: !Sub ${StorageStack}:EcrRepositoryName          
+              Fn::ImportValue: !Sub ${StorageStackName}:EcrRepositoryName          
           - Name: TASK_NAME
             Type: PLAINTEXT
             Value: 
-              Fn::ImportValue: !Sub ${ComputeStackTest}:EcsTaskName                  
+              Fn::ImportValue: !Sub ${ComputeStackTestName}:EcsTaskName 
+      Artifacts:
+        Type: CODEPIPELINE                 
       Source:        
         Type: CODEPIPELINE         
   
-  CodePipeline:
+  CodePipelineProject:
     Type: AWS::CodePipeline::Pipeline    
     Properties:
-      Name: !Sub CodePipeline-${AWS::StackName}-${SourceRepositoryBranch} 
+      Name: !Sub CodePipeline-${AWS::StackName}-${CodeCommitRepoBranchName} 
       RoleArn:    
-        Fn::ImportValue: !Sub ${IamRoleStack}:CodePipelineRoleArn         
+        Fn::ImportValue: !Sub ${SecurityRoleStackName}:CodePipelineRoleArn         
+      # Tiek definēti datu konveijerapstrādes līnijas posmi
+      # Nosaukums, avota un izvaddatu artefakti, posma izpildes pakalpojums, nosaukums un tips, konfigurācijas
       Stages:       
         - Name: Source_Checkout
           Actions:
@@ -97,8 +112,9 @@ Resources:
                 Version: 1               
                 Provider: CodeCommit              
               Configuration:                
-                BranchName: !Ref SourceRepositoryBranch
-                RepositoryName: !Ref SourceRepository              
+                BranchName: !Ref CodeCommitRepoBranchName
+                RepositoryName: !Ref CodeCommitRepoName   
+
         - Name: Application_Build
           Actions:
             - Name: ApplicationBuildAction                           
@@ -114,9 +130,10 @@ Resources:
               Configuration:                
                 ProjectName: !Ref CodeBuildProject
                 PrimarySource: SourceArtifact
+
         - Name: Test_Cluster_Deployment
           Actions:
-            - Name: DeployAction   
+            - Name: TestClusterDeployAction   
               InputArtifacts:                
                 - Name: BuildArtifact           
               ActionTypeId:
@@ -126,21 +143,23 @@ Resources:
                 Provider: ECS
               Configuration:
                 ClusterName: 
-                  Fn::ImportValue: !Sub ${ComputeStackTest}:EcsClusterId                   
+                  Fn::ImportValue: !Sub ${ComputeStackTestName}:EcsClusterId                   
                 ServiceName: 
-                  Fn::ImportValue: !Sub ${ComputeStackTest}:EcsServiceArn                                
-                FileName: imagedefinitions.json               
+                  Fn::ImportValue: !Sub ${ComputeStackTestName}:EcsServiceArn                                
+                FileName: imagedefinitions.json          
+
         - Name: Production_Deployment_Approval
           Actions:
-            - Name: ApprovalAction
+            - Name: ManualApprovalAction
               ActionTypeId:
                 Category: Approval
                 Owner: AWS
                 Version: 1
                 Provider: Manual
+
         - Name: Production_Cluster_Deployment
           Actions:
-            - Name: DeployAction
+            - Name: ProdClusterDeployAction
               InputArtifacts:                
                 - Name: BuildArtifact              
               ActionTypeId:
@@ -150,12 +169,13 @@ Resources:
                 Provider: ECS
               Configuration:
                 ClusterName: 
-                  Fn::ImportValue: !Sub ${ComputeStackProd}:EcsClusterId                   
+                  Fn::ImportValue: !Sub ${ComputeStackProdName}:EcsClusterId                   
                 ServiceName: 
-                  Fn::ImportValue: !Sub ${ComputeStackProd}:EcsServiceArn                         
+                  Fn::ImportValue: !Sub ${ComputeStackProdName}:EcsServiceArn                         
                 FileName: imagedefinitions.json 
+
       ArtifactStore:
         Type: S3
-        Location: !Ref ArtifactS3Bucket 
+        Location: !Ref S3BucketName 
          
 

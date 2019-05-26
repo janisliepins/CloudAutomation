@@ -1,5 +1,5 @@
 # Veidnes apraksts
-Description: This stack creates new network resurces - vpc, 2 public 2 private subnets, route tables, internet and NAT gateways, 2 elastic IPs
+Description: This stack creates new network VPC, 2 public 2 private subnets, route tables, internet and NAT gateways, 2 elastic IPs
 
 
 # Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
@@ -7,21 +7,21 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: Networking configurations
+          default: Network properties
         Parameters:          
-          - VpcCIDR
-          - PublicSubnet1CIDR
-          - PublicSubnet2CIDR
-          - PrivateSubnet1CIDR
-          - PrivateSubnet2CIDR   
+          - VpcCidr
+          - PublicSubnet1Cidr
+          - PublicSubnet2Cidr
+          - PrivateSubnet1Cidr
+          - PrivateSubnet2Cidr 
 
          
 # Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma un struktūras ierobežojumi
 #   1. VpcCIDR - CIDR adrešu diapozons VPC
-#   2. PublicSubnet1CIDR, PublicSubnet2CIDR - CIDR adrešu diapozons VPC publiskajiem apakštīkliem
-#   3. PrivateSubnet1CIDR, PrivateSubnet2CIDR - CIDR adrešu diapozons VPC privātjaiem apakštīkliem
+#   2., 3. PublicSubnet1CIDR, PublicSubnet2CIDR - CIDR adrešu diapozons VPC publiskajiem apakštīkliem
+#   3., 4. PrivateSubnet1CIDR, PrivateSubnet2CIDR - CIDR adrešu diapozons VPC privātjaiem apakštīkliem
 Parameters:
-  VpcCIDR:
+  VpcCidr:
     Type: String
     Description: CIDR block should be used to create the VPC (e.g. 10.0.0.0/16)
     MaxLength: 18
@@ -29,7 +29,7 @@ Parameters:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x (e.g. 10.0.0.0/16)
 
-  PublicSubnet1CIDR:
+  PublicSubnet1Cidr:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.0.0/24)
     MaxLength: 18
@@ -37,7 +37,7 @@ Parameters:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x (e.g. 10.0.0.0/24)
 
-  PublicSubnet2CIDR:
+  PublicSubnet2Cidr:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ2 (e.g. 10.0.1.0/24)
     MaxLength: 18
@@ -45,7 +45,7 @@ Parameters:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x (e.g. 10.0.1.0/24)
 
-  PrivateSubnet1CIDR:
+  PrivateSubnet1Cidr:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ1 (e.g. 10.0.2.0/24)
     MaxLength: 18
@@ -53,7 +53,7 @@ Parameters:
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x (e.g. 10.0.2.0/24)
   
-  PrivateSubnet2CIDR:
+  PrivateSubnet2Cidr:
     Type: String
     Description: CIDR block should be used to create the public subnet in AZ2 (e.g. 10.0.3.0/24)
     MaxLength: 18
@@ -62,25 +62,22 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x (e.g. 10.0.3.0/24) 
 
 
-# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. Vpc - Vpc tīkls, ar Ref funkciju pieškirta ievadparametra CIDR diapozona vērtība, iespējots DNS nosaukumu atbalsts  
-#   2. PublicSubnet1, PublicSubnet2 - VPC publiskie apakštīkli, ar Ref funkciju definēts VPC izvietojums - atsauce uz Vpc resursa ID, CIDR diapozons (ar Ref funkciju pieškirta ievadparametra vērtība), 
-#      pieejamības zonas izvietojums (ar Sub funkciju atsauce uz pseido parametra vērtību), iespējota IP adrešu piešķiršana instancēm, kas atrodas šajos apakštīklos
-#   3. PrivateSubnet1, PrivateSubnet2 - VPC privātie apakštīkli, ar Ref funkciju definēts VPC izvietojums - atsauce uz Vpc resursa ID, CIDR diapozons (ar Ref funkciju pieškirta ievadparametra vērtība), 
-#      pieejamības zonas izvietojums (ar Sub funkciju atsauce uz pseido parametra vērtību), liegta IP adrešu piešķiršana instancēm, kas atrodas šajos apakštīklos
-#   4. InternetGateway, VpcGatewayToInternet - interneta vārteja un tās piesaistne ar VPC izmantojot Ref funkciju - atsauce uz Vpc resursa ID
-#   5. NatEIp1, NatEIp2 - elastīgās IP adreses, definēts VPC domeins šo adrešu izmantošanai un piešķiršanai iekš VPC
-#   6. Nat1, Nat2 - NAT vārtejejas, piesaistne elastīgajām IP adresēm (ar GetAtt funckiju atsaucoties uz elastīgo adrešu resursu atribūtu AllocationId),
-#      ar Ref funkciju, atsaucoties uz publiskajos apakštīklu resursu ID, definēts izvietojums publiskajos apakštīklos
-#   7. PublicRouteTable, PrivateRouteTable1, PrivateRouteTable2 - datuplūsmas maršutēšanas tabulas, ar Ref funkciju atsauce uz Vpc resursa ID vērtību, kurā izvietot šos resursus
-#   8. PublicRoute, PrivateRoute1, PrivateRoute2 - datuplūsmas maršuti un asociācijas ar vārtejām un maršutēšanas tabulām izmantojot Ref funkciju
-#   9. PublicSubnet1RtAssoc, PublicSubnet2RtAssoc, PrivateSubnet1RtAssoc, PrivateSubnet2RtAssoc - definēta apakštīklu saistība ar maršutēšana tabulām un apakštīkliem izmantojot Ref funkciju
-#   10. RdsSubnetGroup - Datubāzes apakštīklu grupas saistība ar privātajiem apakštīkliem, definēta izmantojot Ref funkciju
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni
+#   1. Vpc - Vpc tīkls, CIDR diapozona vērtība, iespējots DNS nosaukumu atbalsts  
+#   2.,3. PublicSubnet1, PublicSubnet2 - VPC publiskie apakštīkli, definēts VPC izvietojums, CIDR diapozons, pieejamības zonas izvietojums, iespējota IP adrešu piešķiršana instancēm, kas atrodas šajos apakštīklos
+#   4.,5. PrivateSubnet1, PrivateSubnet2 - VPC privātie apakštīkli, definēts VPC izvietojums, CIDR diapozons, pieejamības zonas izvietojums, liegta IP adrešu piešķiršana instancēm, kas atrodas šajos apakštīklos
+#   6., 7. InternetGateway, VpcGatewayToInternet - interneta vārteja un tās piesaistne ar VPC 
+#   7.,8. NatEIp1, NatEIp2 - elastīgās IP adreses, definēts VPC domeins šo adrešu izmantošanai un piešķiršanai iekš VPC
+#   9.,10. Nat1, Nat2 - NAT vārtejas, piesaistne elastīgajām IP adresēm, definēts izvietojums publiskajos apakštīklos
+#   11., 12., 13., 14. PublicRouteTable, PrivateRouteTable1, PrivateRouteTable2 - datuplūsmas maršutēšanas tabulas, piesaistne VPC
+#   15., 16., 17. PublicRoute, PrivateRoute1, PrivateRoute2 - datuplūsmas maršuti un asociācijas ar vārtejām un maršutēšanas tabulām 
+#   18.,19.,20.,21 PublicSubnet1RtAssoc, PublicSubnet2RtAssoc, PrivateSubnet1RtAssoc, PrivateSubnet2RtAssoc -  apakštīklu saistība ar maršutēšana tabulām un apakštīkliem 
+#   22. RdsSubnetGroup - Datubāzes apakštīklu grupas saistība ar privātajiem apakštīkliem
 Resources:    
   Vpc:    
     Type: AWS::EC2::VPC
     Properties:      
-      CidrBlock: !Ref VpcCIDR
+      CidrBlock: !Ref VpcCidr
       EnableDnsSupport: true
       EnableDnsHostnames: true             
     
@@ -88,7 +85,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:       
       VpcId: !Ref Vpc
-      CidrBlock: !Ref PublicSubnet1CIDR      
+      CidrBlock: !Ref PublicSubnet1Cidr
       AvailabilityZone: !Sub ${AWS::Region}a 
       MapPublicIpOnLaunch: true      
   
@@ -96,7 +93,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: !Ref PublicSubnet2CIDR    
+      CidrBlock: !Ref PublicSubnet2Cidr   
       AvailabilityZone: !Sub ${AWS::Region}b
       MapPublicIpOnLaunch: true      
  
@@ -104,7 +101,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: !Ref PrivateSubnet1CIDR
+      CidrBlock: !Ref PrivateSubnet1Cidr
       AvailabilityZone: !Sub ${AWS::Region}a
       MapPublicIpOnLaunch: false      
 
@@ -112,7 +109,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref Vpc
-      CidrBlock: !Ref PrivateSubnet2CIDR
+      CidrBlock: !Ref PrivateSubnet2Cidr
       AvailabilityZone: !Sub ${AWS::Region}b     
       MapPublicIpOnLaunch: false      
 
@@ -215,10 +212,10 @@ Resources:
 
 
 # Definēti izveidoto resursu izvaddati un eksporta vērtības
-#   1. VpcId - apraksts, Vpc resursa ID (izgūts ar Ref funckiju atsaucoties uz resursa ID), eksportvērtības nosaukums
-#   2. VpcCidrBlock - apraksts, Vpc resursa CIDR adrešu diapozons (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu CidrBlock), eksportvērtības nosaukums
-#   3. PublicSubnet1, PublicSubnet2, PrivateSubnet1, PrivateSubnet2 - apraksts, apakštīklu ID (izgūtas ar Ref funckiju atsaucoties uz resursu ID), eksportvērtību nosaukumi
-#   4. RdsSubnetGroupId - apraksts, RDS apakštīklu grupas ID (izgūts ar Ref funckiju atsaucoties uz resursa ID), eksportvērtības nosaukums
+#   1. VpcId - apraksts, Vpc resursa ID, eksportvērtības nosaukums
+#   2. VpcCidrBlock - apraksts, Vpc resursa CIDR adrešu diapozons, eksportvērtības nosaukums
+#   3. PublicSubnet1, PublicSubnet2, PrivateSubnet1, PrivateSubnet2 - apraksts, apakštīklu ID, eksportvērtību nosaukumi
+#   4. RdsSubnetGroupId - apraksts, RDS apakštīklu grupas ID, eksportvērtības nosaukums
 Outputs:  
   VpcId:
     Description: Vpc resource ID

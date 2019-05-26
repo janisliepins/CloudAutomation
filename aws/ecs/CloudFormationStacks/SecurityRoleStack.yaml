@@ -3,8 +3,8 @@ Description: This stack creates ECS service and Codepipeline roles
 
 
 # Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. ECS pakalpojuma loma un piekļuves dokuments (nosaukums definēts ar Sub funckiju atsaucoties uz steka nosaukumu)
-#   2. CodePipeline pakalpojuma loma un piekļuves dokuments (nosaukums definēts ar Sub funckiju atsaucoties uz steka nosaukumu)
+#   1. ECS pakalpojuma loma un piekļuves dokuments 
+#   2. CodePipeline pakalpojuma loma un piekļuves dokuments 
 Resources:  
   EcsServiceRole:
     Type: AWS::IAM::Role
@@ -54,8 +54,8 @@ Resources:
 
 
 # Definēti izveidoto resursu izvaddati un eksporta vērtības
-#   1. EcsServiceRoleArn - apraksts, ECS servisa lomas resursa ARN (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Arn), eksportvērtības nosaukums
-#   2. CodePipelineRoleArn - apraksts, CodePipeline lomas resursa (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Arn), eksportvērtības nosaukums
+#   1. EcsServiceRoleArn - apraksts, ECS servisa lomas resursa ARN, eksportvērtības nosaukums
+#   2. CodePipelineRoleArn - apraksts, CodePipeline lomas resursa, eksportvērtības nosaukums
 Outputs: 
   EcsServiceRoleArn:
     Description: ECS Service IAM role Amazon Resource Name

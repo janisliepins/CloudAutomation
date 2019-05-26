@@ -1,7 +1,8 @@
 # Veidnes apraksts
 Description: This template creates RDS instance with installed MySQL database 
 
-# Tiek grupēta ievadparametru sekcija
+
+# Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -11,14 +12,15 @@ Metadata:
           - DbAllocatedStorage
           - DbClass
           - DbName
-          - DbUser
+          - DbUsername
           - DbPassword 
+          - MultiAzDeployment
 
       - Label:
-          default: Stack associations with CloudFormation stacks
+          default: Cross-stack reference
         Parameters:          
-          - NetworkStack
-          - SecurityGroupStack
+          - NetworkStackName
+          - SecurityGroupStackName
 
 
 # Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma, vērtību un struktūras ierobežojumi, atļautās vērtībās, ierobežojumu apraksts
@@ -26,65 +28,63 @@ Metadata:
 #   2. DbClass - RDS instances tips
 #   3. DbName - datubāzes nosaukums
 #   4. DbUser - datubāzes lietotājvārds
-#   5. DbPassword - datubāzes lietotāja parole, ievadvērtība tiek slēpta
-#   6. MultiAz - datubāzes lietotāja parole, ievadvērtība tiek slēpta
-#   7. NetworkStack - tīkla steka nosaukums
-#   8. SecurityGroupStack - drošības grupu steka nosaukums
+#   5. DbPassword - datubāzes lietotāja parole
+#   6. MultiAz - iezvietot vairākās pieejamības zonās
+#   7., 8. NetworkStackName, SecurityGroupStack - tīkla un drošības grupu steka nosaukums
 Parameters:   
   DbAllocatedStorage:        
     Type: Number    
-    Description: Enter the size of the database (GB) 
+    Description: Enter the size of the database
     MinValue: 5    
-    ConstraintDescription : Must be at least 5 GB 
+    ConstraintDescription: Must be at least 5 GB 
 
   DbClass:  
     Type: String   
     Description: Database instance class    
-    AllowedValues: [db.t2.xlarge, db.t2.2xlarge]
-    ConstraintDescription: Must select a valid General purpose T2 database instance type      
+    AllowedValues: [db.t2.micro, db.t2.xlarge, db.t2.2xlarge]
 
   DbName:
     Type: String    
+    Description: Database name
     MinLength: 1
-    MaxLength: 64
-    Description: Enter database name
+    MaxLength: 64    
     AllowedPattern: "[a-zA-Z0-9]*"
     ConstraintDescription: Must contain only alphanumeric characters    
 
-  DbUser: 
+  DbUsername: 
     Type: String    
+    Description: Ddatabase username
     MinLength: 1
-    MaxLength: 16
-    Description: Enter database username
+    MaxLength: 16    
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
     ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
 
   DbPassword: 
     NoEcho: true
+    Description: Enter database password  
     Type: String    
     MinLength: 8
     MaxLength: 41
-    Description: Enter database password  
+    ConstraintDescription: At least 8 symbols    
 
   MultiAzDeployment:    
     Type: String    
-    AllowedValues: [true, false]  
     Description: Enable Multi AZ deployment for RDS?
+    AllowedValues: [true, false]  
   
-  NetworkStack:        
+  NetworkStackName:        
     Type: String    
+    Description: Network stack name
+    MinLength: 1    
+
+  SecurityGroupStackName:        
+    Type: String 
+    Description: Security group stack name   
     MinLength: 1
-    Description: Name of the network stack for export value usage
+    
 
-  SecurityGroupStack:        
-    Type: String    
-    MinLength: 1
-    Description: Name of the security group stack for export value usage
-
-
-# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. Database - izmantojot Ref funkciju piešķirts krātuves apjoms, RDS instances klase jeb tips, datubāzes nosaukums, lietotājvārds un parole, definēts vairāku pieejamības zonu izvietojums,
-#      izmantojot Sub funkciju, iegūtas ievadparametru vērtības un izgūtas tīklošanas un drošības grupu steku izvaddatu vērtības, liegta publiska piekļuve, 
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni
+#   Database - krātuves apjoms, RDS instances klase, datubāzes nosaukums, lietotājvārds un parole, pieejamības zonu izvietojums, drošības grupu piesaistne, izvietojums apakštīklos      
 Resources: 
   Database: 
     Type: AWS::RDS::DBInstance 
@@ -93,17 +93,17 @@ Resources:
       DBInstanceClass: !Ref DbClass    
       DBName: !Ref DbName       
       Engine: MySQL 
-      MasterUsername: !Ref DbUser
+      MasterUsername: !Ref DbUsername
       MasterUserPassword: !Ref DbPassword
       MultiAZ: !Ref MultiAzDeployment
       PubliclyAccessible: false           
       VPCSecurityGroups: 
-        - Fn::ImportValue: !Sub ${SecurityGroupStack}:VpcTrafficSecurityGroupId
+        - Fn::ImportValue: !Sub ${SecurityGroupStackName}:VpcTrafficSecurityGroupId
       DBSubnetGroupName: 
-        Fn::ImportValue: !Sub ${NetworkStack}:RdsSubnetGroupId
+        Fn::ImportValue: !Sub ${NetworkStackName}:RdsSubnetGroupId
 
 # Definēti izveidoto resursu izvaddati 
-#   1. DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkts (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtiem Endpoint un Address)
+#   DatabaseEndpoint - apraksts, izveidotās datubāzes savienojuma galapunkts 
 Outputs:     
   DatabaseEndpoint: 
     Description: Database endpoint    

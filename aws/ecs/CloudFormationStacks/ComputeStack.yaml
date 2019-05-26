@@ -1,27 +1,28 @@
-Description: "This stack creates ECS infrastructure: log group, cluster, service with application load balancer, task definition, container definition"
+# Veidnes apraksts
+Description: This stack creates ECS infrastructure log group, cluster, service with application load balancer, task definition, container definition
 
 
-# Tiek grupēta ievadparametru sekcija
+# Izveidota CloudFormation saskarne, tiek grupēta ievadparametru sekcija
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:             
       - Label:
-          default: ECS configuration
+          default: ECS properties
         Parameters: [ServiceName, ImageUri, TaskCount, ContainerPort, CpuUnits, Memory]
 
       - Label:
-          default: Stack association with other CloudFormation stacks
-        Parameters: [IamRoleStack, NetworkStack, SecurityGroupStack]
+          default: Cross-stack reference
+        Parameters: [NetworkStackName, SecurityGroupStackName, SecurityRoleStackName]
 
 
-# Definēti ievadparamteri, to tips, apraksts, simbolu daudzuma, vērtību un struktūras ierobežojumi, atļautās vērtībās, ierobežojumu apraksts
+# Definētas ievadparamteru īpašības - tips, apraksts,  minimālais simbolu daudzums, atļautās vērtībās
 #   1. ContainerPort - konteinera ports
 #   2. TaskCount - uzdevumu jeb konteineru izpildījumu skaits
 #   3. CpuUnits - CPU vienību skaits
 #   4. Memory - RAM lielums
 #   5. ServiceName - ECS servisa nosaukums
 #   6. ImageUri - Docker imidža URI
-#   7. IamRoleStack, NetworkStack, SecurityGroupStack - drošības lomu, tīklošanas, drošības grupu steku nosaukumi
+#   7., 8., 9. SecurityRoleStack, NetworkStackName, SecurityGroupStackName - drošības lomu, grupu un tīklošanas steku nosaukumi
 Parameters:       
   ContainerPort:    
     Type: Number
@@ -40,12 +41,12 @@ Parameters:
 
   Memory:
     Type: Number  
-    Description: The amount (in MiB) of memory used by the task     
+    Description: Amount of memory used by the task     
     AllowedValues: [512, 1024, 2048, 4096, 8192, 16384]  
 
   ServiceName:    
     Type: String
-    Description: Enter name of your ECS service 
+    Description: Name of your ECS service 
     MinLength: 1 
 
   ImageUri:    
@@ -53,29 +54,30 @@ Parameters:
     Description: Docker image URI    
     MinLength: 1    
 
-  IamRoleStack:    
+  SecurityRoleStackName:    
     Type: String 
-    Description: Name of the IAM Role stack for export value usage
+    Description: Security role stack name
     MinLength: 1  
 
-  NetworkStack:    
+  NetworkStackName:    
     Type: String 
-    Description: Name of the network stack for export value usage
+    Description: Network stack name
     MinLength: 1 
 
-  SecurityGroupStack:    
+  SecurityGroupStackName:    
     Type: String 
-    Description: Name of the security group stack for export value usage
+    Description: Security group stack name
     MinLength: 1  
 
 
-# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni:
-#   1. EcsCluster - ECS klāsteris ar identisku nosaukumu kā stekam
+# Definēti visi resursi un to īpašības, kas tiks izveidoti, izpildot šo veidni
+#   1. EcsCluster - ECS klāsteris, nosaukums
 #   2. LogGroup - žurnālu grupa
-#   3. ApplicationLoadBalancer - ALB resursa īpašības: publiski pieejams DNS, piesaistne ar ALB drošības grupu un izvietojums divos publiskos apakštīklos
-#   4. TargetGroup - ALB resursa mērķa grupas īpašības: izvietojums VPC tīklā, konteineru ports, atbalstāmais pieprasījumu protokols, status pārbaudes īpašības - intervāli, protokols
-#   5. Listener - ALB uztvērēja īpašības: mērķa grupa, pāradresācija, ports un protokols
-
+#   3. ApplicationLoadBalancer - ALB, publiski pieejams DNS, piesaistne ar ALB drošības grupu un izvietojums divos publiskos apakštīklos
+#   4. TargetGroup - ALB mērķa grupa, izvietojums VPC tīklā, konteineru ports, atbalstāmais pieprasījumu protokols, status pārbaudes īpašības - intervāli, protokols
+#   5. Listener - ALB uztvērējs, ports un protokols, mērķa grupa, pāradresācija, piesaistne ALB
+#   6. TaskDefinition - ECS uzdevuma definīcija fails, izpildes tips, CPU un RAM vērtības, pieņemtas IAM lomas, tīklošanas režīms, konteinera definīcija
+#   7. EcsService - atkarība no ALB resursiem, izpildes tips, izmantojamais ECS uzdevuma definīcijas fails, uzdevumu izpildes skaits, izvietojuma konfigurācijas, ALB piesaistnes, tīklošana konfigurācijas
 Resources:    
   EcsCluster:
     Type: AWS::ECS::Cluster
@@ -90,10 +92,10 @@ Resources:
     Properties:      
       Scheme: internet-facing    
       SecurityGroups: 
-        - Fn::ImportValue: !Sub ${SecurityGroupStack}:AlbSecurityGroupId        
+        - Fn::ImportValue: !Sub ${SecurityGroupStackName}:AlbSecurityGroupId        
       Subnets: 
-        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet1Id
-        - Fn::ImportValue: !Sub ${NetworkStack}:PublicSubnet2Id 
+        - Fn::ImportValue: !Sub ${NetworkStackName}:PublicSubnet1Id
+        - Fn::ImportValue: !Sub ${NetworkStackName}:PublicSubnet2Id 
 
   TargetGroup:    
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -105,31 +107,31 @@ Resources:
       HealthCheckProtocol: HTTP
       Port: !Ref ContainerPort
       Protocol: HTTP
-      VpcId: 
-        Fn::ImportValue: !Sub ${NetworkStack}:VpcId
       TargetType: ip
+      VpcId: 
+        Fn::ImportValue: !Sub ${NetworkStackName}:VpcId
 
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener    
     Properties:
+      Port: 80
+      Protocol: HTTP
       DefaultActions:
         - TargetGroupArn: !Ref TargetGroup
           Type: forward
-      LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
-      Protocol: HTTP
+      LoadBalancerArn: !Ref ApplicationLoadBalancer      
   
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       RequiresCompatibilities: [FARGATE]
+      Family: !Sub ${AWS::StackName}-Task-Definition 
       Cpu: !Ref CpuUnits
       Memory: !Ref Memory 
       ExecutionRoleArn: 
-        Fn::ImportValue: !Sub ${IamRoleStack}:EcsServiceRoleArn   
+        Fn::ImportValue: !Sub ${SecurityRoleStackName}:EcsServiceRoleArn   
       TaskRoleArn: 
-        Fn::ImportValue: !Sub ${IamRoleStack}:EcsServiceRoleArn      
-      Family: !Sub ${AWS::StackName}-Task-Definition       
+        Fn::ImportValue: !Sub ${SecurityRoleStackName}:EcsServiceRoleArn              
       NetworkMode: awsvpc  
       ContainerDefinitions:
         - Name: !Sub ${ServiceName}-container
@@ -144,13 +146,16 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: !Sub awslogs-${ServiceName}-service        
 
+            
+
   EcsService:
     Type: AWS::ECS::Service 
     DependsOn: [ApplicationLoadBalancer, TargetGroup, Listener]     
     Properties:
+      LaunchType: FARGATE
+      TaskDefinition: !Ref TaskDefinition 
       Cluster: !Ref EcsCluster
       DesiredCount: !Ref TaskCount
-      LaunchType: FARGATE
       DeploymentConfiguration:        
         MinimumHealthyPercent: 100         
         MaximumPercent: 200 
@@ -162,13 +167,17 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           SecurityGroups: 
-            - Fn::ImportValue: !Sub ${SecurityGroupStack}:VpcTrafficSecurityGroupId          
+            - Fn::ImportValue: !Sub ${SecurityGroupStackName}:VpcTrafficSecurityGroupId          
           Subnets: 
-            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet1Id
-            - Fn::ImportValue: !Sub ${NetworkStack}:PrivateSubnet2Id                          
-      TaskDefinition: !Ref TaskDefinition   
+            - Fn::ImportValue: !Sub ${NetworkStackName}:PrivateSubnet1Id
+            - Fn::ImportValue: !Sub ${NetworkStackName}:PrivateSubnet2Id                          
 
 
+# Definēti izveidoto resursu izvaddati un eksportētās vērtības
+#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL, eksportvērtības nosaukums
+#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukums, eksportvērtības nosaukums
+#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukums, eksportvērtības nosaukums
+#   4. S3BucketName - apraksts, S3 krātuves nosaukums, eksportvērtības nosaukums
 Outputs: 
   EcsClusterId:
     Description: The ECS Cluster ID 

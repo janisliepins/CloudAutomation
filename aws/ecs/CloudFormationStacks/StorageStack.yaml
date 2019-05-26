@@ -56,10 +56,10 @@ Resources:
       
 
 # Definēti izveidoto resursu izvaddati un eksportētās vērtības
-#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu CodeCommitRepositoryUrl), eksportvērtības nosaukums
-#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukums (izgūts ar GetAtt funckiju atsaucoties uz resursa atribūtu Name), eksportvērtības nosaukums
-#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukums (izgūts ar Ref funckiju atsaucoties uz veidnes ievadparamtetra EcrRepoName vērtību), eksportvērtības nosaukums
-#   4. S3BucketName - apraksts, S3 krātuves nosaukums (izgūts ar Ref funckiju atsaucoties uz resursa ID), eksportvērtības nosaukums
+#   1. CodeCommitRepositoryUrl - apraksts, CodeCommit repozitorija klonējuma URL, eksportvērtības nosaukums
+#   2. CodeCommitRepositoryName - apraksts, CodeCommit repozitorija nosaukums, eksportvērtības nosaukums
+#   3. EcrRepositoryName - apraksts, ECR repozitorija nosaukums, eksportvērtības nosaukums
+#   4. S3BucketName - apraksts, S3 krātuves nosaukums, eksportvērtības nosaukums
 Outputs:  
   CodeCommitRepositoryUrl:
     Description: CodeCommit repository clone URL
